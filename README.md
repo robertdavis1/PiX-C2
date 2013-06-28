@@ -10,4 +10,4 @@ TODO:
 * Build data exfil functionality
 
 
-Disclaimer: This application must not be used for illegal purposes. Get express permission before use.
+Disclaimer: This application must not be used for illegal purposes. Get explicit permission before use.
