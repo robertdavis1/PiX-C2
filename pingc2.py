@@ -30,7 +30,7 @@ def main(argv):
 			request = p['Raw'].load
 			checksum = p['ICMP'].chksum
 			ip_id = p['IP'].id
-			icmp_id = p[ICMP'].id
+			icmp_id = p['ICMP'].id
 			print "[*] Request checksum: (%s)" % checksum
 			print "[*] Request: " + request
 			if request == 'What shall I do master?':
