@@ -18,9 +18,8 @@ def main(argv):
                 exit()
 	
 	conf.verb = 0
-	#host = sys.argv[1]
 	count = 1
-	filter = "icmp and host " + host
+	filter = "icmp"
 	print "[*] Sniffing with filter (%s) for %d bytes" % (filter, int(count))
 
 	while 1:
