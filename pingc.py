@@ -4,6 +4,7 @@
 # by NoCow
 # This is the client side application for my ICMP C2 project. The client will periodically ping the C2 server
 #  and receive commands in the data portion of the reply. I am currently using Scapy for the packet building
+# Usage: ./pingc.py <IP>
 
 import sys
 import time
