@@ -16,5 +16,6 @@ DONE:
 * added ASCII art to pingc2
 * added sniffer threading
 * added ability to change botnet command on fly through command center
+* added menu
 
 Disclaimer: This application must not be used for illegal purposes. Get explicit permission before use.
