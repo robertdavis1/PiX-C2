@@ -31,11 +31,7 @@ def main(argv):
 
 	while True:
 		signal.signal(signal.SIGINT, handler)
-		try:
-			packet = sniff(count,filter=filter)
-		except KeyboardInterrupt:
-        		print "Bye"
-        		sys.exit()
+		packet = sniff(count,filter=filter)
 		for p in packet:
 			#p.show2()
 			try:
@@ -50,14 +46,13 @@ def main(argv):
 					send(resp)
 				elif 'sysinfo' in request:
 					sysinfo = request[8:]
-					print "[*] Client sent sysinfo: %s" % sysinfo
+					print "[*] Received sysinfo from client: %s" % sysinfo
 					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
-					print "[*] Response sent: Thanks"	
+					#resp.show2()
+					print "[*] Response sent: Thanks"
+					send(resp)	
 				else:	
 					print "[**] Client not recognized"
-			except KeyboardInterrupt:
-        			print "Bye"
-        			sys.exit()				
 			except: 
 				print "[X] ERROR: ", sys.exc_info()[0]  
 
