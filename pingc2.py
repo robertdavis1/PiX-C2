@@ -7,7 +7,14 @@
 #  a command is sent to the client. Command must start with "run"
 
 import sys
+import signal
 from scapy.all import *
+
+# Inerrupt handler to kill process cleanly
+def handler(signum, frame):
+	print 'Bye!'
+	sys.exit()
+
 
 def main(argv):
 	if len(argv) < 1:
@@ -22,8 +29,13 @@ def main(argv):
 	filter = "icmp"
 	print "[*] Sniffing with filter (%s) for %d bytes" % (filter, int(count))
 
-	while 1:
-		packet = sniff(count,filter=filter)
+	while True:
+		signal.signal(signal.SIGINT, handler)
+		try:
+			packet = sniff(count,filter=filter)
+		except KeyboardInterrupt:
+        		print "Bye"
+        		sys.exit()
 		for p in packet:
 			#p.show2()
 			try:
@@ -40,7 +52,9 @@ def main(argv):
 					print "[*] Client sent sysinfo"
 				else:	
 					print "[**] Client not recognized"
-				
+			except KeyboardInterrupt:
+        			print "Bye"
+        			sys.exit()				
 			except: 
 				print "[X] ERROR: ", sys.exc_info()[0]  
 
