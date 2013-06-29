@@ -9,6 +9,7 @@ Complete - * Build sleep functionality into client/server
 * Build shell functionality into client
 * Build data exfil functionality into client
 * Build database for system data collection
-* Fix clean stop of server side 
+Complete - * Fix clean stop of server side 
+* Build sysinfo module
 
 Disclaimer: This application must not be used for illegal purposes. Get explicit permission before use.
