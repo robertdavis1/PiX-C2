@@ -10,7 +10,8 @@ Complete - * Build sleep functionality into client/server
 * Build data exfil functionality into client
 * Build database for system data collection
 Complete - * Fix clean stop of server side 
-* Build sysinfo module
+* Build sysinfo module and store data in database
+* Build bot display
 
 DONE:
 * added ASCII art to pingc2
