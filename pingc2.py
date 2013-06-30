@@ -82,17 +82,19 @@ def c2main(command):
                         	logfile_error.write(error)
 
 def main(argv):
-	print "	 _____    _                    _____   ___  "
- 	print "	|  __ \  (_)                  / ____| |__ \ "
- 	print "	| |__) |  _   _ __     __ _  | |         ) |"
- 	print "	|  ___/  | | | '_ \   / _` | | |        / / "
- 	print "	| |      | | | | | | | (_| | | |____   / /_ "
- 	print "	|_|      |_| |_| |_|  \__, |  \_____| |____|"
+	print "	--------------------------------------------"
+	print "	  _____    _                    _____   ___  "
+ 	print "	 |  __ \  (_)                  / ____| |__ \ "
+ 	print "	 | |__) |  _   _ __     __ _  | |         ) |"
+ 	print "	 |  ___/  | | | '_ \   / _` | | |        / / "
+ 	print "	 | |      | | | | | | | (_| | | |____   / /_ "
+ 	print "	 |_|      |_| |_| |_|  \__, |  \_____| |____|"
         print "        		        _/ |                "
-        print "			     |___/		    "
-        print "						    "
-	print "			Command Center              "
-	print "			   by NoCow		    "
+        print "	 		      |___/		    "
+        print "	 					    "
+	print "	 		Command Center              "
+	print "	 		   by NoCow		    "
+	print "	--------------------------------------------"
 	manager = Manager()
 	command = manager.Namespace()
 	command.value = 'sysinfo'
