@@ -2,8 +2,8 @@ pingC2 ICMP C2 server application
 written by NoCow 
 email: robert.ant.davis@gmail.com
 
-This is the server side application for the ICMP C2 project. The server will sniff ICMP packets and listen for the 
-data payload of "What shall I do master?". If this data is received, a command is sent to the client. Command must 
+The ICMP C2 project (ie pingc2) is a client/server application that allows for command and control using only ICMP. The server will sniff ICMP packets and pull information from the data payload of the ICMP packet. 
+If the proper data is received, a command is sent to the client. Command must 
 start with "run <command>". Other server options include sleep, sysinfo, more to come.
 
 ASSUMPTIONS:
