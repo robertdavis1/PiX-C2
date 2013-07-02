@@ -13,12 +13,12 @@ ASSUMPTIONS:
 
 TODO:
 Complete - * Build sleep functionality into client/server
-* Add client machine GUID for system tracking
+Complete - * Add client machine GUID for system tracking
 * Build shell functionality into client
 * Build data exfil functionality into client
-* Build database for system data collection
+Complete - * Build database for system data collection
 Complete - * Fix clean stop of server side 
-* Build sysinfo module and store data in database
+Complete - * Build sysinfo module and store data in database
 Complete - * Build bot display
 * Add ability to control single or groups of bots instead of global command
 
