@@ -1,5 +1,4 @@
 TODO:
-** Build data exfil functionality into client 
 * Build shell functionality into client
 * Add ability to control single or groups of bots instead of global command
 
@@ -15,3 +14,4 @@ Complete - * Build sysinfo module and store data in database
 Complete - * Build bot display
 Complete - * Build sleep functionality into client/server
 Complete - * Add client machine GUID for system tracking
+Complete - **Build data exfil functionality into client
