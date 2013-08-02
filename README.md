@@ -9,5 +9,6 @@ start with "run <command>". Other server options include sleep, sysinfo, more to
 ASSUMPTIONS:
 * You have root/admin privs on client/server machine
 * Python/Scapy are installed on client/server machine
+* Mysql installed and database configured (working on schema file)
 
 Disclaimer: This application must not be used for illegal purposes. Get explicit permission before use.
