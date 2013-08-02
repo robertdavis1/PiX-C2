@@ -1,7 +1,6 @@
 TODO:
-* Build shell functionality into client
-* Add ability to control single or groups of bots instead of global command
 * Add binary file transfer ability
+* Add ability to run standalone (no database or checkin)
 
 
 DONE:
@@ -9,6 +8,7 @@ DONE:
 * added sniffer threading
 * added ability to change botnet command on fly through command center
 * added menu
+Complete - * Build shell functionality into client
 Complete - * Build database for system data collection
 Complete - * Fix clean stop of server side
 Complete - * Build sysinfo module and store data in database
