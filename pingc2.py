@@ -87,7 +87,7 @@ def icmpshell(botNum,botIP,botConnect):
 			ident = icmppacket.get_icmp_id()
                 	seq_id = icmppacket.get_icmp_seq()
                 	data = icmppacket.get_data_as_string()
-			print "[D] Data received: %s" % str(data)
+		#	print "[D] Data received: %s" % str(data)
                		if len(data) > 0:
 				sys.stdout.write(data)
 				sys.stdout.flush()
