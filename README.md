@@ -9,6 +9,8 @@ start with "run <command>". Other server options include sleep, sysinfo, more to
 ASSUMPTIONS:
 * You have root/admin privs on client/server machine
 * Python/Scapy are installed on client/server machine
-* Mysql installed and database configured (working on schema file)
+* Mysql installed
+
+run install.sh to install database schema and user/password for master (pingc2.py) app.
 
 Disclaimer: This application must not be used for illegal purposes. Get explicit permission before use.
