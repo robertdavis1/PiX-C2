@@ -28,10 +28,10 @@ from scapy.all import *
 #printLine method for debugging
 def printLine(line,flag):
 	logfile = file('log/pingc2.log', 'a')
-	if flag == 2:
+	if int(flag) == 2:
 		logfile.write(line + '\n')
 		print line
-	if flag == 1:
+	if int(flag) == 1:
 		logfile.write(line + '\n')
 		if not '[D]' in str(line):
 			print line
@@ -540,6 +540,7 @@ if __name__ == "__main__":
 	parser.add_option("-d", "--debug", help="add debug statements (1 for standard, 2 for more)",metavar="LEVEL")
 	(options, args) = parser.parse_args()	
 	flag = options.debug
+	print "[D] flag = %s" % flag
 	printLine("--------------------------------------------",flag)
 	printLine("PingC2.py started on %s" % (date.today()),flag)
 	printLine("--------------------------------------------",flag)
