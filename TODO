@@ -1,6 +1,8 @@
 TODO:
 * Add binary file transfer ability
 * Add ability to run standalone (no database or checkin)
+* Add Windows client app
+	* Add Windows sysinfo ability
 
 
 DONE:
