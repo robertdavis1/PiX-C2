@@ -547,7 +547,13 @@ if __name__ == "__main__":
 		flag = options.debug
 	#if options.serverType:
 	#	serverType = 'standalone'
-		
+	
+	#check for log and loot directories; create if they do not exist
+	if not os.path.exists('log'):
+		os.makedirs('log')
+	if not os.path.exists('loot'):
+		os.makedirs('loot')	
+	
 	printLine("--------------------------------------------",flag)
 	printLine("PingC2.py started on %s" % (date.today()),flag)
 	printLine("--------------------------------------------",flag)

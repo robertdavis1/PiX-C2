@@ -333,13 +333,11 @@ def processReply(dest,p):
 def main(dest,flag):
 	global filesSent
 	filesSent = []
-	
-	#parser = OptionParser(usage="%prog [-d] <Server IP>")
-        #parser.add_option("-d", "--debug", help="add debug statements (1 for standard, 2 for more)",metavar="LEVEL")
-        #(options, args) = parser.parse_args()
-        #if options.debug:
-	#	flag = options.debug
-       	 
+       	
+	# check for log directory; create if it doesn't exist
+	if not os.path.exists('log'):
+   		os.makedirs('log')	
+ 
 	printLine("--------------------------------------------",flag)
         printLine("PingC.py started on %s" % (date.today()),flag)
         printLine("--------------------------------------------",flag)
