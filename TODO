@@ -3,7 +3,7 @@ TODO:
 * Add ability to run standalone (no database or checkin)
 * Add Windows client app
 	* Add Windows sysinfo ability
-	* Powershell client code
+	* Powershell client code (PowerPing)
 
 
 DONE:
