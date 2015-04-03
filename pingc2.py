@@ -541,16 +541,16 @@ if __name__ == "__main__":
 
 	parser = OptionParser(usage="%prog [-d]")
 	parser.add_option("-d", "--debug", help="add debug statements (1 for standard, 2 for more)",metavar="LEVEL")
-	parser.add_option("-s", action="store_true", dest="serverType", help="run as standalone server, no DB or bot checkin")
+	#parser.add_option("-s", action="store_true", dest="serverType", help="run as standalone server, no DB or bot checkin")
 	(options, args) = parser.parse_args()	
 	if options.debug:
 		flag = options.debug
-	if options.serverType:
-		serverType = 'standalone'
+	#if options.serverType:
+	#	serverType = 'standalone'
 		
 	printLine("--------------------------------------------",flag)
 	printLine("PingC2.py started on %s" % (date.today()),flag)
 	printLine("--------------------------------------------",flag)
 	printLine("[D] flag=%s" % (flag),flag)
-	main(flag,serverType)
+	main(flag)
 	sys.exit("Bye")
