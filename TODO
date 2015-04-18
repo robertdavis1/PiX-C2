@@ -3,11 +3,11 @@ TODO:
 * Add ability to run standalone (no database or checkin)
 * Add Windows client app
 	* Add Windows sysinfo ability
-	* Powershell client code (PowerPing)
+	* Powershell client code (PowerPiX-c)
 
 
 DONE:
-* added ASCII art to pingc2
+* added ASCII art to pix-s
 * added sniffer threading
 * added ability to change botnet command on fly through command center
 * added menu
