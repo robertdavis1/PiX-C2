@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# pingC2 ICMP C2 server application
+# pix-s (Ping X-fil Server) ICMP C2 server application
 #  written by NoCow
 # This is the server side application for the ICMP C2 project. The server will sniff ICMP packets 
 #  and listen for the data payload of "What shall I do master?". If this data is received,
@@ -555,7 +555,7 @@ if __name__ == "__main__":
 		os.makedirs('loot')	
 	
 	printLine("--------------------------------------------",flag)
-	printLine("PingC2.py started on %s" % (date.today()),flag)
+	printLine("Pix-s.py started on %s" % (date.today()),flag)
 	printLine("--------------------------------------------",flag)
 	printLine("[D] flag=%s" % (flag),flag)
 	main(flag)
