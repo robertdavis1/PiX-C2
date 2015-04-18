@@ -14,5 +14,5 @@ mysql -u $username -p$password < pixc2-db-create.sql
 mysql -u $username -p$password -e "GRANT ALL PRIVILEGES ON pixc2.* TO $user@'localhost' IDENTIFIED BY '$pass'"
 
 echo "[Main]" > 'conf/pixc2.conf'
-echo "dbuser=$user" >> 'conf/pixc2.conf'
-echo "dbpass=$pass" >> 'conf/pixc2.conf'
+echo "dbuser=$user" >> 'conf/pix-s.conf'
+echo "dbpass=$pass" >> 'conf/pix-s.conf'
